@@ -333,3 +333,5 @@ documents.get('/:companyId', async (c) => {
 });
 
 export default documents;
+
+// Note: Admin edit route is mounted at /api/admin/documents/:companyId in admin.ts

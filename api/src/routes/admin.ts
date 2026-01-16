@@ -10,6 +10,8 @@ import {
   createUser,
   getConfirmedTransactionsForExport,
   getTransactionsByCompany,
+  getCompanyDocuments,
+  updateCompanyDocuments,
 } from '../db/queries';
 import { generateYayoiCSV } from '../services/export';
 
@@ -125,6 +127,45 @@ admin.post('/users', async (c) => {
     }
 
     return c.json({ error: 'ユーザーの作成に失敗しました' }, 500);
+  }
+});
+
+// PUT /api/admin/documents/:companyId - Update company documents (Admin)
+admin.put('/documents/:companyId', async (c) => {
+  try {
+    const companyId = c.req.param('companyId');
+    const body = await c.req.json();
+
+    // Verify company exists
+    const company = await getCompanyById(c.env.DB, companyId);
+    if (!company) {
+      return c.json({ error: '顧問先が見つかりません' }, 404);
+    }
+
+    // Check if documents exist
+    const docs = await getCompanyDocuments(c.env.DB, companyId);
+    if (!docs) {
+      return c.json({ error: '書類が見つかりません' }, 404);
+    }
+
+    // Update text fields
+    await updateCompanyDocuments(c.env.DB, companyId, {
+      shacho_phone: body.shacho_phone,
+      shacho_name_reading: body.shacho_name_reading,
+      kazoku_info: body.kazoku_info,
+      shacho_income: body.shacho_income,
+      kazoku_income: body.kazoku_income,
+      salary_start_date: body.salary_start_date,
+      kousei_nenkin: body.kousei_nenkin,
+      kokuzei_info: body.kokuzei_info,
+      chihouzei_info: body.chihouzei_info,
+    });
+
+    const updated = await getCompanyDocuments(c.env.DB, companyId);
+    return c.json({ data: updated });
+  } catch (error) {
+    console.error('Admin update documents error:', error);
+    return c.json({ error: '書類情報の更新に失敗しました' }, 500);
   }
 });
 
