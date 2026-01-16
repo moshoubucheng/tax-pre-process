@@ -15,9 +15,7 @@ documents.use('*', authMiddleware);
 
 // PDF field names mapping
 const PDF_FIELDS = [
-  'tohon', 'teikan', 'zairyu_card', 'juminhyo',
-  'kaigyo_doc1', 'kaigyo_doc2', 'kaigyo_doc3',
-  'kaigyo_doc4', 'kaigyo_doc5', 'kaigyo_doc6'
+  'tohon', 'teikan', 'zairyu_card', 'juminhyo', 'kaigyo_doc'
 ] as const;
 
 // GET /api/documents - Get company documents

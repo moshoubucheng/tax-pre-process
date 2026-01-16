@@ -33,12 +33,7 @@ const PDF_FIELDS = [
   { key: 'teikan', label: '定款', required: true },
   { key: 'zairyu_card', label: '社長・家族在留カード', required: true },
   { key: 'juminhyo', label: '住民票（マイナンバー記載）', required: true },
-  { key: 'kaigyo_doc1', label: '開業届出書類 1', required: false },
-  { key: 'kaigyo_doc2', label: '開業届出書類 2', required: false },
-  { key: 'kaigyo_doc3', label: '開業届出書類 3', required: false },
-  { key: 'kaigyo_doc4', label: '開業届出書類 4', required: false },
-  { key: 'kaigyo_doc5', label: '開業届出書類 5', required: false },
-  { key: 'kaigyo_doc6', label: '開業届出書類 6', required: false },
+  { key: 'kaigyo_doc', label: '開業届出書類', required: false },
 ] as const;
 
 export default function Documents() {
@@ -50,9 +45,8 @@ export default function Documents() {
 
   // Form state
   const [formData, setFormData] = useState({
-    shacho_phone: '',
     shacho_name_reading: '',
-    kazoku_name_reading: '',
+    shacho_phone: '',
     kazoku_info: '',
     shacho_income: '',
     kazoku_income: '',
@@ -74,9 +68,8 @@ export default function Documents() {
       if (res.data) {
         setDocs(res.data);
         setFormData({
-          shacho_phone: res.data.shacho_phone || '',
           shacho_name_reading: res.data.shacho_name_reading || '',
-          kazoku_name_reading: res.data.kazoku_name_reading || '',
+          shacho_phone: res.data.shacho_phone || '',
           kazoku_info: res.data.kazoku_info || '',
           shacho_income: res.data.shacho_income || '',
           kazoku_income: res.data.kazoku_income || '',
@@ -262,20 +255,6 @@ export default function Documents() {
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              社長連絡先電話番号
-            </label>
-            <input
-              type="tel"
-              value={formData.shacho_phone}
-              onChange={(e) => setFormData({ ...formData, shacho_phone: e.target.value })}
-              disabled={isLocked}
-              placeholder="例: 090-1234-5678"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md disabled:bg-gray-100"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
               社長名（フリガナ）
             </label>
             <input
@@ -290,14 +269,14 @@ export default function Documents() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              家族名（フリガナ）
+              社長連絡先電話番号
             </label>
             <input
-              type="text"
-              value={formData.kazoku_name_reading}
-              onChange={(e) => setFormData({ ...formData, kazoku_name_reading: e.target.value })}
+              type="tel"
+              value={formData.shacho_phone}
+              onChange={(e) => setFormData({ ...formData, shacho_phone: e.target.value })}
               disabled={isLocked}
-              placeholder="例: ヤマダ ハナコ"
+              placeholder="例: 090-1234-5678"
               className="w-full px-3 py-2 border border-gray-300 rounded-md disabled:bg-gray-100"
             />
           </div>

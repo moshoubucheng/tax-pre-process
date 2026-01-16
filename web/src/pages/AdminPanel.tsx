@@ -66,12 +66,7 @@ const PDF_FIELDS = [
   { key: 'teikan', label: '定款' },
   { key: 'zairyu_card', label: '社長・家族在留カード' },
   { key: 'juminhyo', label: '住民票（マイナンバー記載）' },
-  { key: 'kaigyo_doc1', label: '開業届出書類 1' },
-  { key: 'kaigyo_doc2', label: '開業届出書類 2' },
-  { key: 'kaigyo_doc3', label: '開業届出書類 3' },
-  { key: 'kaigyo_doc4', label: '開業届出書類 4' },
-  { key: 'kaigyo_doc5', label: '開業届出書類 5' },
-  { key: 'kaigyo_doc6', label: '開業届出書類 6' },
+  { key: 'kaigyo_doc', label: '開業届出書類' },
 ] as const;
 
 export default function AdminPanel() {
@@ -786,16 +781,12 @@ export default function AdminPanel() {
                         <h3 className="font-semibold text-gray-900">その他の情報</h3>
                         <div className="space-y-2 text-sm">
                           <div className="flex justify-between py-2 border-b border-gray-100">
-                            <span className="text-gray-500">社長連絡先電話番号</span>
-                            <span className="font-medium">{companyDocs.shacho_phone || '未入力'}</span>
-                          </div>
-                          <div className="flex justify-between py-2 border-b border-gray-100">
                             <span className="text-gray-500">社長名（フリガナ）</span>
                             <span className="font-medium">{companyDocs.shacho_name_reading || '未入力'}</span>
                           </div>
                           <div className="flex justify-between py-2 border-b border-gray-100">
-                            <span className="text-gray-500">家族名（フリガナ）</span>
-                            <span className="font-medium">{companyDocs.kazoku_name_reading || '未入力'}</span>
+                            <span className="text-gray-500">社長連絡先電話番号</span>
+                            <span className="font-medium">{companyDocs.shacho_phone || '未入力'}</span>
                           </div>
                           <div className="py-2 border-b border-gray-100">
                             <span className="text-gray-500 block mb-1">家族情報</span>
