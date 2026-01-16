@@ -271,7 +271,7 @@ export async function getCompaniesWithStats(db: D1Database): Promise<
     .bind(startDate)
     .all();
 
-  return result.results as (Company & {
+  return result.results as unknown as (Company & {
     pending_count: number;
     confirmed_count: number;
     monthly_total: number;

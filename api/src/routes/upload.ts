@@ -44,11 +44,13 @@ upload.post('/', async (c) => {
 
     // Parse multipart form data
     const formData = await c.req.formData();
-    const file = formData.get('file');
+    const fileEntry = formData.get('file');
 
-    if (!file || !(file instanceof File)) {
+    if (!fileEntry || typeof fileEntry === 'string') {
       return c.json({ error: 'ファイルが見つかりません' }, 400);
     }
+
+    const file = fileEntry as File;
 
     // Validate file size
     if (file.size > MAX_FILE_SIZE) {
