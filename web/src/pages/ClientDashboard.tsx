@@ -46,7 +46,6 @@ export default function ClientDashboard() {
   // Transaction detail modal
   const [selectedTxn, setSelectedTxn] = useState<TransactionDetail | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
-  const [confirming, setConfirming] = useState(false);
 
   useEffect(() => {
     loadDashboard();
@@ -84,29 +83,6 @@ export default function ClientDashboard() {
 
   function closeDetail() {
     setSelectedTxn(null);
-  }
-
-  async function handleConfirm() {
-    if (!selectedTxn) return;
-    setConfirming(true);
-    try {
-      await api.put(`/transactions/${selectedTxn.id}/confirm`, {});
-      // Update local state
-      setSelectedTxn({ ...selectedTxn, status: 'confirmed' });
-      setPendingList(pendingList.filter(t => t.id !== selectedTxn.id));
-      if (stats) {
-        setStats({
-          ...stats,
-          pending_count: stats.pending_count - 1,
-          confirmed_count: stats.confirmed_count + 1,
-        });
-      }
-    } catch (err) {
-      console.error('Failed to confirm:', err);
-      alert('確定に失敗しました');
-    } finally {
-      setConfirming(false);
-    }
   }
 
   function getImageUrl(transactionId: string): string {
@@ -308,15 +284,15 @@ export default function ClientDashboard() {
                   </div>
                 </div>
 
-                <div className="p-4 border-t border-gray-200 flex justify-end gap-2">
-                  {selectedTxn.status === 'pending' && (
-                    <button
-                      onClick={handleConfirm}
-                      disabled={confirming}
-                      className="px-4 py-2 bg-green-600 text-white rounded-md text-sm disabled:opacity-50"
-                    >
-                      {confirming ? '処理中...' : '確定する'}
-                    </button>
+                <div className="p-4 border-t border-gray-200 flex items-center justify-between">
+                  {selectedTxn.status === 'pending' ? (
+                    <span className="text-sm text-orange-600">
+                      ※ 管理者の確認待ちです
+                    </span>
+                  ) : (
+                    <span className="text-sm text-green-600">
+                      ✓ 管理者により確認済み
+                    </span>
                   )}
                   <button
                     onClick={closeDetail}

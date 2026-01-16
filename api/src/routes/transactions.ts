@@ -90,16 +90,27 @@ transactions.put('/:id', async (c) => {
       return c.json({ error: 'アクセス権限がありません' }, 403);
     }
 
-    // Update allowed fields
-    await updateTransaction(c.env.DB, id, {
+    // Clients cannot modify confirmed transactions
+    if (user.role !== 'admin' && transaction.status === 'confirmed') {
+      return c.json({ error: '確認済みの取引は変更できません' }, 403);
+    }
+
+    // Update allowed fields (only admin can change status)
+    const updateData: Record<string, unknown> = {
       transaction_date: body.transaction_date,
       amount: body.amount,
       vendor_name: body.vendor_name,
       account_debit: body.account_debit,
       account_credit: body.account_credit,
       tax_category: body.tax_category,
-      status: body.status,
-    });
+    };
+
+    // Only admin can change status
+    if (user.role === 'admin' && body.status) {
+      updateData.status = body.status;
+    }
+
+    await updateTransaction(c.env.DB, id, updateData);
 
     const updated = await getTransactionById(c.env.DB, id);
     return c.json({ data: updated });
@@ -109,11 +120,16 @@ transactions.put('/:id', async (c) => {
   }
 });
 
-// PUT /api/transactions/:id/confirm - Confirm transaction
+// PUT /api/transactions/:id/confirm - Confirm transaction (Admin only)
 transactions.put('/:id/confirm', async (c) => {
   try {
     const user = c.get('user');
     const id = c.req.param('id');
+
+    // Only admin can confirm transactions
+    if (user.role !== 'admin') {
+      return c.json({ error: '管理者のみが確認できます' }, 403);
+    }
 
     const transaction = await getTransactionById(c.env.DB, id);
 
@@ -121,17 +137,16 @@ transactions.put('/:id/confirm', async (c) => {
       return c.json({ error: '取引が見つかりません' }, 404);
     }
 
-    // Check access permission
-    if (user.role !== 'admin' && transaction.company_id !== user.company_id) {
-      return c.json({ error: 'アクセス権限がありません' }, 403);
+    if (transaction.status === 'confirmed') {
+      return c.json({ error: 'すでに確認済みです' }, 400);
     }
 
     await updateTransaction(c.env.DB, id, { status: 'confirmed' });
 
-    return c.json({ message: '確定しました' });
+    return c.json({ message: '確認しました' });
   } catch (error) {
     console.error('Confirm transaction error:', error);
-    return c.json({ error: '取引の確定に失敗しました' }, 500);
+    return c.json({ error: '取引の確認に失敗しました' }, 500);
   }
 });
 

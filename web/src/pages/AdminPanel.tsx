@@ -34,6 +34,7 @@ export default function AdminPanel() {
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loadingTransactions, setLoadingTransactions] = useState(false);
+  const [confirmingTxn, setConfirmingTxn] = useState<string | null>(null);
 
   useEffect(() => {
     loadCompanies();
@@ -92,6 +93,35 @@ export default function AdminPanel() {
   function closeCompanyDetail() {
     setSelectedCompany(null);
     setTransactions([]);
+  }
+
+  async function handleConfirmTransaction(txnId: string) {
+    setConfirmingTxn(txnId);
+    try {
+      await api.put(`/transactions/${txnId}/confirm`, {});
+      // Update local state
+      setTransactions(transactions.map(t =>
+        t.id === txnId ? { ...t, status: 'confirmed' } : t
+      ));
+      // Update company stats
+      if (selectedCompany) {
+        setSelectedCompany({
+          ...selectedCompany,
+          pending_count: selectedCompany.pending_count - 1,
+          confirmed_count: selectedCompany.confirmed_count + 1,
+        });
+        // Also update in the companies list
+        setCompanies(companies.map(c =>
+          c.id === selectedCompany.id
+            ? { ...c, pending_count: c.pending_count - 1, confirmed_count: c.confirmed_count + 1 }
+            : c
+        ));
+      }
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '確認に失敗しました');
+    } finally {
+      setConfirmingTxn(null);
+    }
   }
 
   async function handleCreateCompany(e: React.FormEvent) {
@@ -373,8 +403,17 @@ export default function AdminPanel() {
                             <span>{txn.account_category || '未分類'}</span>
                           </div>
                         </div>
-                        <div className="text-right">
+                        <div className="text-right flex items-center gap-3">
                           <span className="font-semibold">¥{txn.amount.toLocaleString()}</span>
+                          {txn.status === 'pending' && (
+                            <button
+                              onClick={() => handleConfirmTransaction(txn.id)}
+                              disabled={confirmingTxn === txn.id}
+                              className="px-3 py-1 bg-green-600 text-white text-xs rounded-md disabled:opacity-50"
+                            >
+                              {confirmingTxn === txn.id ? '処理中...' : '確認'}
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
