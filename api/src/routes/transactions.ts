@@ -150,6 +150,36 @@ transactions.put('/:id/confirm', async (c) => {
   }
 });
 
+// PUT /api/transactions/:id/unlock - Unlock transaction (Admin only)
+transactions.put('/:id/unlock', async (c) => {
+  try {
+    const user = c.get('user');
+    const id = c.req.param('id');
+
+    // Only admin can unlock transactions
+    if (user.role !== 'admin') {
+      return c.json({ error: '管理者のみが解除できます' }, 403);
+    }
+
+    const transaction = await getTransactionById(c.env.DB, id);
+
+    if (!transaction) {
+      return c.json({ error: '取引が見つかりません' }, 404);
+    }
+
+    if (transaction.status !== 'confirmed') {
+      return c.json({ error: '確認済みではありません' }, 400);
+    }
+
+    await updateTransaction(c.env.DB, id, { status: 'pending' });
+
+    return c.json({ message: '編集を許可しました' });
+  } catch (error) {
+    console.error('Unlock transaction error:', error);
+    return c.json({ error: '解除に失敗しました' }, 500);
+  }
+});
+
 // DELETE /api/transactions/:id - Delete transaction
 transactions.delete('/:id', async (c) => {
   try {

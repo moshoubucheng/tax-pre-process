@@ -4,6 +4,7 @@ import Login from './pages/Login';
 import ClientDashboard from './pages/ClientDashboard';
 import Upload from './pages/Upload';
 import AdminPanel from './pages/AdminPanel';
+import AdminReceipts from './pages/AdminReceipts';
 import Chat from './pages/Chat';
 import Documents from './pages/Documents';
 import AdminDocuments from './pages/AdminDocuments';
@@ -49,7 +50,7 @@ function AppRoutes() {
       <Route path="/upload" element={
         <PrivateRoute>
           <Layout>
-            <Upload />
+            {user?.role === 'admin' ? <AdminReceipts /> : <Upload />}
           </Layout>
         </PrivateRoute>
       } />
