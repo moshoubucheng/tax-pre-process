@@ -1,4 +1,4 @@
-import type { Company, User, Transaction } from '../types';
+import type { Company, User, Transaction, CompanyDocuments } from '../types';
 
 // User queries
 export async function getUserByEmail(db: D1Database, email: string): Promise<User | null> {
@@ -304,4 +304,65 @@ export async function getConfirmedTransactionsForExport(
     .all<Transaction>();
 
   return result.results;
+}
+
+// ============== Company Documents ==============
+
+export async function getCompanyDocuments(
+  db: D1Database,
+  companyId: string
+): Promise<CompanyDocuments | null> {
+  const result = await db
+    .prepare('SELECT * FROM company_documents WHERE company_id = ?')
+    .bind(companyId)
+    .first<CompanyDocuments>();
+  return result;
+}
+
+export async function createCompanyDocuments(
+  db: D1Database,
+  data: { id: string; company_id: string }
+): Promise<void> {
+  await db
+    .prepare('INSERT INTO company_documents (id, company_id) VALUES (?, ?)')
+    .bind(data.id, data.company_id)
+    .run();
+}
+
+export async function updateCompanyDocuments(
+  db: D1Database,
+  companyId: string,
+  data: Partial<Omit<CompanyDocuments, 'id' | 'company_id' | 'created_at'>>
+): Promise<void> {
+  const fields: string[] = [];
+  const values: (string | null)[] = [];
+
+  // Build dynamic update query
+  const allowedFields = [
+    'tohon_key', 'teikan_key', 'zairyu_card_key', 'juminhyo_key',
+    'kaigyo_doc1_key', 'kaigyo_doc2_key', 'kaigyo_doc3_key',
+    'kaigyo_doc4_key', 'kaigyo_doc5_key', 'kaigyo_doc6_key',
+    'shacho_phone', 'shacho_name_reading', 'kazoku_name_reading',
+    'kazoku_info', 'shacho_income', 'kazoku_income', 'salary_start_date',
+    'kousei_nenkin', 'kokuzei_info', 'chihouzei_info',
+    'status', 'confirmed_by', 'confirmed_at'
+  ];
+
+  for (const field of allowedFields) {
+    if (field in data) {
+      fields.push(`${field} = ?`);
+      values.push((data as Record<string, string | null>)[field]);
+    }
+  }
+
+  if (fields.length === 0) return;
+
+  // Always update updated_at
+  fields.push("updated_at = datetime('now')");
+  values.push(companyId);
+
+  await db
+    .prepare(`UPDATE company_documents SET ${fields.join(', ')} WHERE company_id = ?`)
+    .bind(...values)
+    .run();
 }

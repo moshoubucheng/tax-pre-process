@@ -5,6 +5,7 @@ import ClientDashboard from './pages/ClientDashboard';
 import Upload from './pages/Upload';
 import AdminPanel from './pages/AdminPanel';
 import Chat from './pages/Chat';
+import Documents from './pages/Documents';
 import Layout from './components/layout/Layout';
 
 function PrivateRoute({ children, adminOnly = false }: { children: React.ReactNode; adminOnly?: boolean }) {
@@ -64,6 +65,14 @@ function AppRoutes() {
         <PrivateRoute>
           <Layout>
             <Chat />
+          </Layout>
+        </PrivateRoute>
+      } />
+
+      <Route path="/documents" element={
+        <PrivateRoute>
+          <Layout>
+            <Documents />
           </Layout>
         </PrivateRoute>
       } />

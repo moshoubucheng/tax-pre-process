@@ -11,6 +11,7 @@ import dashboard from './routes/dashboard';
 import admin from './routes/admin';
 import chat from './routes/chat';
 import dev from './routes/dev';
+import documents from './routes/documents';
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -46,6 +47,7 @@ app.route('/api/dashboard', dashboard);
 app.route('/api/admin', admin);
 app.route('/api/chat', chat);
 app.route('/api/dev', dev); // Development only routes
+app.route('/api/documents', documents);
 
 // 404 handler
 app.notFound((c) => {
