@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+.wrangler/
+.mf/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+.dev.vars
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Testing
+coverage/
+
+# Cloudflare
+.wrangler/
+.mf/
+
+# Local D1 database
+.wrangler/state/
+
+# Misc
+*.tsbuildinfo
+.turbo

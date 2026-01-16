@@ -1,0 +1,5 @@
+# Copy this file to .dev.vars and fill in the values
+# These variables are used for local development with wrangler dev
+
+CLAUDE_API_KEY=sk-ant-xxxxx
+JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
