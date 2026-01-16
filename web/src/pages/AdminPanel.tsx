@@ -93,8 +93,6 @@ export default function AdminPanel() {
   const [docsCompany, setDocsCompany] = useState<Company | null>(null);
   const [companyDocs, setCompanyDocs] = useState<CompanyDocuments | null>(null);
   const [loadingDocs, setLoadingDocs] = useState(false);
-  const [confirmingDocs, setConfirmingDocs] = useState(false);
-  const [unlockingDocs, setUnlockingDocs] = useState(false);
   const [editingDocs, setEditingDocs] = useState(false);
   const [savingDocs, setSavingDocs] = useState(false);
   const [docsFormData, setDocsFormData] = useState({
@@ -279,34 +277,6 @@ export default function AdminPanel() {
       ? 'https://tax-api.759nxrb6x4-bc3.workers.dev/api'
       : '/api';
     return `${baseUrl}/documents/file/${field}?token=${token}&company_id=${companyId}`;
-  }
-
-  async function handleConfirmDocs() {
-    if (!docsCompany) return;
-    setConfirmingDocs(true);
-    try {
-      await api.put(`/documents/confirm/${docsCompany.id}`, {});
-      setCompanyDocs(companyDocs ? { ...companyDocs, status: 'confirmed' } : null);
-      alert('書類を確認しました');
-    } catch (err) {
-      alert(err instanceof Error ? err.message : '確認に失敗しました');
-    } finally {
-      setConfirmingDocs(false);
-    }
-  }
-
-  async function handleUnlockDocs() {
-    if (!docsCompany) return;
-    setUnlockingDocs(true);
-    try {
-      await api.put(`/documents/unlock/${docsCompany.id}`, {});
-      setCompanyDocs(companyDocs ? { ...companyDocs, status: 'submitted' } : null);
-      alert('編集を許可しました');
-    } catch (err) {
-      alert(err instanceof Error ? err.message : '解除に失敗しました');
-    } finally {
-      setUnlockingDocs(false);
-    }
   }
 
   async function handleCreateCompany(e: React.FormEvent) {
@@ -764,20 +734,7 @@ export default function AdminPanel() {
             ) : docsCompany ? (
               <>
                 <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-                  <div>
-                    <h2 className="text-lg font-semibold">{docsCompany.name} - 会社書類</h2>
-                    <div className="flex items-center gap-2 mt-1">
-                      {companyDocs?.status === 'draft' && (
-                        <span className="text-sm px-2 py-0.5 bg-gray-100 text-gray-600 rounded">下書き</span>
-                      )}
-                      {companyDocs?.status === 'submitted' && (
-                        <span className="text-sm px-2 py-0.5 bg-orange-100 text-orange-700 rounded">確認待ち</span>
-                      )}
-                      {companyDocs?.status === 'confirmed' && (
-                        <span className="text-sm px-2 py-0.5 bg-green-100 text-green-700 rounded">確認済</span>
-                      )}
-                    </div>
-                  </div>
+                  <h2 className="text-lg font-semibold">{docsCompany.name} - 会社書類</h2>
                   <button
                     onClick={closeDocsReview}
                     className="text-gray-500 hover:text-gray-700 text-2xl leading-none"
@@ -989,24 +946,6 @@ export default function AdminPanel() {
                         {savingDocs ? '保存中...' : '保存'}
                       </button>
                     </>
-                  )}
-                  {companyDocs && companyDocs.status === 'submitted' && !editingDocs && (
-                    <button
-                      onClick={handleConfirmDocs}
-                      disabled={confirmingDocs}
-                      className="px-4 py-2 bg-green-600 text-white rounded-md text-sm disabled:opacity-50"
-                    >
-                      {confirmingDocs ? '処理中...' : '確認する'}
-                    </button>
-                  )}
-                  {companyDocs && companyDocs.status === 'confirmed' && !editingDocs && (
-                    <button
-                      onClick={handleUnlockDocs}
-                      disabled={unlockingDocs}
-                      className="px-4 py-2 bg-orange-600 text-white rounded-md text-sm disabled:opacity-50"
-                    >
-                      {unlockingDocs ? '処理中...' : '編集を許可する'}
-                    </button>
                   )}
                   {!editingDocs && (
                     <button
