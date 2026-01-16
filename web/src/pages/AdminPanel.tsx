@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { api, API_BASE_URL } from '../lib/api';
+import { api } from '../lib/api';
 
 interface Company {
   id: string;
