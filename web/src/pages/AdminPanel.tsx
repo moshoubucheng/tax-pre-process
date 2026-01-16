@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { api } from '../lib/api';
+import { api, API_BASE_URL } from '../lib/api';
 
 interface Company {
   id: string;
@@ -7,6 +7,17 @@ interface Company {
   pending_count: number;
   confirmed_count: number;
   monthly_total: number;
+}
+
+interface Transaction {
+  id: string;
+  date: string;
+  amount: number;
+  vendor: string;
+  account_category: string;
+  status: string;
+  confidence: number;
+  created_at: string;
 }
 
 export default function AdminPanel() {
@@ -18,6 +29,11 @@ export default function AdminPanel() {
   const [showForm, setShowForm] = useState(false);
   const [newCompany, setNewCompany] = useState({ name: '', email: '', password: '', userName: '' });
   const [creating, setCreating] = useState(false);
+
+  // Company detail modal
+  const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loadingTransactions, setLoadingTransactions] = useState(false);
 
   useEffect(() => {
     loadCompanies();
@@ -57,6 +73,25 @@ export default function AdminPanel() {
     } finally {
       setExporting(null);
     }
+  }
+
+  async function openCompanyDetail(company: Company) {
+    setSelectedCompany(company);
+    setLoadingTransactions(true);
+    try {
+      const res = await api.get<{ data: Transaction[] }>(`/admin/companies/${company.id}/transactions`);
+      setTransactions(res.data || []);
+    } catch (err) {
+      console.error('Failed to load transactions:', err);
+      setTransactions([]);
+    } finally {
+      setLoadingTransactions(false);
+    }
+  }
+
+  function closeCompanyDetail() {
+    setSelectedCompany(null);
+    setTransactions([]);
   }
 
   async function handleCreateCompany(e: React.FormEvent) {
@@ -210,7 +245,12 @@ export default function AdminPanel() {
               {companies.map((company) => (
                 <tr key={company.id}>
                   <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">
-                    {company.name}
+                    <button
+                      onClick={() => openCompanyDetail(company)}
+                      className="text-primary-600 hover:text-primary-800 hover:underline"
+                    >
+                      {company.name}
+                    </button>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-gray-600">
                     ¥{company.monthly_total.toLocaleString()}
@@ -241,7 +281,12 @@ export default function AdminPanel() {
           {companies.map((company) => (
             <div key={company.id} className="p-4">
               <div className="flex items-center justify-between mb-2">
-                <h3 className="font-medium text-gray-900">{company.name}</h3>
+                <button
+                  onClick={() => openCompanyDetail(company)}
+                  className="font-medium text-primary-600 hover:underline"
+                >
+                  {company.name}
+                </button>
                 <span className="text-gray-600">¥{company.monthly_total.toLocaleString()}</span>
               </div>
               <div className="flex items-center justify-between text-sm">
@@ -267,6 +312,95 @@ export default function AdminPanel() {
           </div>
         )}
       </div>
+
+      {/* Company Detail Modal */}
+      {selectedCompany && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold">{selectedCompany.name}</h2>
+                <div className="flex gap-4 mt-1 text-sm text-gray-600">
+                  <span>今月合計: ¥{selectedCompany.monthly_total.toLocaleString()}</span>
+                  <span className="text-green-600">確認済: {selectedCompany.confirmed_count}件</span>
+                  <span className="text-orange-600">要確認: {selectedCompany.pending_count}件</span>
+                </div>
+              </div>
+              <button
+                onClick={closeCompanyDetail}
+                className="text-gray-500 hover:text-gray-700 text-2xl leading-none"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-auto p-6">
+              {loadingTransactions ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+                </div>
+              ) : transactions.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  取引データがありません
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {transactions.map((txn) => (
+                    <div
+                      key={txn.id}
+                      className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-medium">{txn.vendor || '不明'}</span>
+                            <span className={`text-xs px-2 py-0.5 rounded-full ${
+                              txn.status === 'confirmed'
+                                ? 'bg-green-100 text-green-700'
+                                : 'bg-orange-100 text-orange-700'
+                            }`}>
+                              {txn.status === 'confirmed' ? '確認済' : '要確認'}
+                            </span>
+                            {txn.confidence < 80 && (
+                              <span className="text-xs text-orange-600">
+                                信頼度: {txn.confidence}%
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            <span>{txn.date}</span>
+                            <span className="mx-2">·</span>
+                            <span>{txn.account_category || '未分類'}</span>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <span className="font-semibold">¥{txn.amount.toLocaleString()}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="p-4 border-t border-gray-200 flex justify-end gap-2">
+              <button
+                onClick={() => handleExport(selectedCompany.id)}
+                disabled={exporting === selectedCompany.id}
+                className="px-4 py-2 bg-primary-600 text-white rounded-md text-sm disabled:opacity-50"
+              >
+                {exporting === selectedCompany.id ? 'エクスポート中...' : '弥生CSV出力'}
+              </button>
+              <button
+                onClick={closeCompanyDetail}
+                className="px-4 py-2 border border-gray-300 rounded-md text-sm"
+              >
+                閉じる
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

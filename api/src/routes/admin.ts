@@ -9,6 +9,7 @@ import {
   createCompany,
   createUser,
   getConfirmedTransactionsForExport,
+  getTransactionsByCompany,
 } from '../db/queries';
 import { generateYayoiCSV } from '../services/export';
 
@@ -43,6 +44,30 @@ admin.get('/companies/:id', async (c) => {
   } catch (error) {
     console.error('Get company error:', error);
     return c.json({ error: '顧問先の取得に失敗しました' }, 500);
+  }
+});
+
+// GET /api/admin/companies/:id/transactions - Get company transactions
+admin.get('/companies/:id/transactions', async (c) => {
+  try {
+    const id = c.req.param('id');
+    const { status, limit, offset } = c.req.query();
+
+    const company = await getCompanyById(c.env.DB, id);
+    if (!company) {
+      return c.json({ error: '顧問先が見つかりません' }, 404);
+    }
+
+    const transactions = await getTransactionsByCompany(c.env.DB, id, {
+      status: status || undefined,
+      limit: limit ? parseInt(limit) : 100,
+      offset: offset ? parseInt(offset) : 0,
+    });
+
+    return c.json({ data: transactions });
+  } catch (error) {
+    console.error('Get company transactions error:', error);
+    return c.json({ error: '取引一覧の取得に失敗しました' }, 500);
   }
 });
 
