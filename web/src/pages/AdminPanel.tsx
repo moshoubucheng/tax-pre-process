@@ -20,6 +20,20 @@ interface Transaction {
   created_at: string;
 }
 
+interface TransactionDetail {
+  id: string;
+  transaction_date: string | null;
+  amount: number | null;
+  vendor_name: string | null;
+  account_debit: string | null;
+  account_credit: string;
+  tax_category: string | null;
+  ai_confidence: number | null;
+  status: 'pending' | 'confirmed';
+  image_key: string;
+  created_at: string;
+}
+
 export default function AdminPanel() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,6 +49,10 @@ export default function AdminPanel() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loadingTransactions, setLoadingTransactions] = useState(false);
   const [confirmingTxn, setConfirmingTxn] = useState<string | null>(null);
+
+  // Transaction detail modal
+  const [selectedTxn, setSelectedTxn] = useState<TransactionDetail | null>(null);
+  const [loadingTxnDetail, setLoadingTxnDetail] = useState(false);
 
   useEffect(() => {
     loadCompanies();
@@ -93,6 +111,31 @@ export default function AdminPanel() {
   function closeCompanyDetail() {
     setSelectedCompany(null);
     setTransactions([]);
+  }
+
+  async function openTransactionDetail(txnId: string) {
+    setLoadingTxnDetail(true);
+    try {
+      const res = await api.get<{ data: TransactionDetail }>(`/transactions/${txnId}`);
+      setSelectedTxn(res.data);
+    } catch (err) {
+      console.error('Failed to load transaction:', err);
+      alert('取引情報の取得に失敗しました');
+    } finally {
+      setLoadingTxnDetail(false);
+    }
+  }
+
+  function closeTxnDetail() {
+    setSelectedTxn(null);
+  }
+
+  function getImageUrl(transactionId: string): string {
+    const token = localStorage.getItem('token');
+    const baseUrl = import.meta.env.PROD
+      ? 'https://tax-api.759nxrb6x4-bc3.workers.dev/api'
+      : '/api';
+    return `${baseUrl}/upload/transaction/${transactionId}/image?token=${token}`;
   }
 
   async function handleConfirmTransaction(txnId: string) {
@@ -378,7 +421,8 @@ export default function AdminPanel() {
                   {transactions.map((txn) => (
                     <div
                       key={txn.id}
-                      className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50"
+                      className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 cursor-pointer"
+                      onClick={() => openTransactionDetail(txn.id)}
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
@@ -407,13 +451,19 @@ export default function AdminPanel() {
                           <span className="font-semibold">¥{txn.amount.toLocaleString()}</span>
                           {txn.status === 'pending' && (
                             <button
-                              onClick={() => handleConfirmTransaction(txn.id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleConfirmTransaction(txn.id);
+                              }}
                               disabled={confirmingTxn === txn.id}
                               className="px-3 py-1 bg-green-600 text-white text-xs rounded-md disabled:opacity-50"
                             >
                               {confirmingTxn === txn.id ? '処理中...' : '確認'}
                             </button>
                           )}
+                          <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
                         </div>
                       </div>
                     </div>
@@ -437,6 +487,112 @@ export default function AdminPanel() {
                 閉じる
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Transaction Detail Modal */}
+      {(selectedTxn || loadingTxnDetail) && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[60]">
+          <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+            {loadingTxnDetail ? (
+              <div className="flex items-center justify-center py-20">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+              </div>
+            ) : selectedTxn ? (
+              <>
+                <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+                  <h2 className="text-lg font-semibold">取引詳細</h2>
+                  <button
+                    onClick={closeTxnDetail}
+                    className="text-gray-500 hover:text-gray-700 text-2xl leading-none"
+                  >
+                    ×
+                  </button>
+                </div>
+
+                <div className="flex-1 overflow-auto p-4 space-y-4">
+                  {/* Receipt Image */}
+                  <div className="bg-gray-100 rounded-lg overflow-hidden">
+                    <img
+                      src={getImageUrl(selectedTxn.id)}
+                      alt="領収書"
+                      className="w-full h-auto max-h-64 object-contain"
+                    />
+                  </div>
+
+                  {/* Transaction Info */}
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-500">ステータス</span>
+                      <span className={`px-2 py-1 rounded-full text-sm ${
+                        selectedTxn.status === 'confirmed'
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-orange-100 text-orange-700'
+                      }`}>
+                        {selectedTxn.status === 'confirmed' ? '確認済' : '要確認'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">店舗名</span>
+                      <span className="font-medium">{selectedTxn.vendor_name || '不明'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">日付</span>
+                      <span className="font-medium">{selectedTxn.transaction_date || '不明'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">金額</span>
+                      <span className="font-medium text-lg">¥{(selectedTxn.amount || 0).toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">勘定科目（借方）</span>
+                      <span className="font-medium">{selectedTxn.account_debit || '未設定'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">勘定科目（貸方）</span>
+                      <span className="font-medium">{selectedTxn.account_credit || '未設定'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">税区分</span>
+                      <span className="font-medium">{selectedTxn.tax_category || '未設定'}</span>
+                    </div>
+                    {selectedTxn.ai_confidence !== null && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">AI信頼度</span>
+                        <span className={`font-medium ${
+                          selectedTxn.ai_confidence >= 80 ? 'text-green-600' :
+                          selectedTxn.ai_confidence >= 60 ? 'text-orange-600' : 'text-red-600'
+                        }`}>
+                          {selectedTxn.ai_confidence}%
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="p-4 border-t border-gray-200 flex justify-end gap-2">
+                  {selectedTxn.status === 'pending' && (
+                    <button
+                      onClick={() => {
+                        handleConfirmTransaction(selectedTxn.id);
+                        setSelectedTxn({ ...selectedTxn, status: 'confirmed' });
+                      }}
+                      disabled={confirmingTxn === selectedTxn.id}
+                      className="px-4 py-2 bg-green-600 text-white rounded-md text-sm disabled:opacity-50"
+                    >
+                      {confirmingTxn === selectedTxn.id ? '処理中...' : '確認する'}
+                    </button>
+                  )}
+                  <button
+                    onClick={closeTxnDetail}
+                    className="px-4 py-2 border border-gray-300 rounded-md text-sm"
+                  >
+                    閉じる
+                  </button>
+                </div>
+              </>
+            ) : null}
           </div>
         </div>
       )}
