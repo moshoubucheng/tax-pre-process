@@ -96,4 +96,35 @@ dashboard.get('/pending', async (c) => {
   }
 });
 
+// GET /api/dashboard/confirmed - Get confirmed transactions
+dashboard.get('/confirmed', async (c) => {
+  try {
+    const user = c.get('user');
+
+    if (!user.company_id) {
+      return c.json({ error: '会社情報が見つかりません' }, 400);
+    }
+
+    const transactions = await getTransactionsByCompany(
+      c.env.DB,
+      user.company_id,
+      { status: 'confirmed', limit: 50 }
+    );
+
+    // Return only necessary fields for the confirmed list
+    const confirmedList = transactions.map((t) => ({
+      id: t.id,
+      transaction_date: t.transaction_date,
+      amount: t.amount,
+      vendor_name: t.vendor_name,
+      ai_confidence: t.ai_confidence,
+    }));
+
+    return c.json({ data: confirmedList });
+  } catch (error) {
+    console.error('Confirmed transactions error:', error);
+    return c.json({ error: '確認済リストの取得に失敗しました' }, 500);
+  }
+});
+
 export default dashboard;

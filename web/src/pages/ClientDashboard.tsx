@@ -41,6 +41,7 @@ export default function ClientDashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([]);
   const [pendingList, setPendingList] = useState<PendingTransaction[]>([]);
+  const [confirmedList, setConfirmedList] = useState<PendingTransaction[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Transaction detail modal
@@ -53,14 +54,16 @@ export default function ClientDashboard() {
 
   async function loadDashboard() {
     try {
-      const [statsRes, monthlyRes, pendingRes] = await Promise.all([
+      const [statsRes, monthlyRes, pendingRes, confirmedRes] = await Promise.all([
         api.get<DashboardStats>('/dashboard/stats'),
         api.get<{ data: MonthlyData[] }>('/dashboard/monthly'),
         api.get<{ data: PendingTransaction[] }>('/dashboard/pending'),
+        api.get<{ data: PendingTransaction[] }>('/dashboard/confirmed'),
       ]);
       setStats(statsRes);
       setMonthlyData(monthlyRes.data || []);
       setPendingList(pendingRes.data || []);
+      setConfirmedList(confirmedRes.data || []);
     } catch (err) {
       console.error('Failed to load dashboard:', err);
     } finally {
@@ -194,6 +197,56 @@ export default function ClientDashboard() {
                       </span>
                     )}
                   </div>
+                  <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {/* Confirmed Transactions */}
+      <div className="bg-white rounded-lg shadow-sm p-4">
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">
+          確認済リスト
+          {confirmedList.length > 0 && (
+            <span className="ml-2 text-sm font-normal text-green-600">
+              ({confirmedList.length}件)
+            </span>
+          )}
+        </h2>
+
+        {confirmedList.length === 0 ? (
+          <p className="text-gray-500 text-center py-8">
+            確認済みの取引はありません
+          </p>
+        ) : (
+          <ul className="divide-y divide-gray-100">
+            {confirmedList.map((txn) => (
+              <li
+                key={txn.id}
+                onClick={() => openTransactionDetail(txn.id)}
+                className="py-3 flex items-center justify-between cursor-pointer hover:bg-gray-50 -mx-4 px-4 transition-colors"
+              >
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium text-gray-900">
+                      {txn.vendor_name || '不明な店舗'}
+                    </p>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700">
+                      確認済
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-500">
+                    {txn.transaction_date || '日付不明'}
+                  </p>
+                </div>
+                <div className="text-right flex items-center gap-2">
+                  <p className="font-medium text-gray-900">
+                    ¥{(txn.amount || 0).toLocaleString()}
+                  </p>
                   <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                   </svg>
