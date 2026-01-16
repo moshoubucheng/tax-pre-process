@@ -23,6 +23,9 @@ app.use('*', cors({
     // Allow all Pages deployments (including preview URLs)
     if (origin?.endsWith('.tax-pre-process.pages.dev')) return origin;
     if (origin === 'https://tax-pre-process.pages.dev') return origin;
+    // Allow custom domains
+    if (origin === 'https://japantpp.com') return origin;
+    if (origin === 'https://www.japantpp.com') return origin;
     return null;
   },
   credentials: true,
