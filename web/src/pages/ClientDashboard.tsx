@@ -257,10 +257,10 @@ export default function ClientDashboard() {
         )}
       </div>
 
-      {/* Transaction Detail Modal */}
+      {/* Transaction Detail Modal/Full Screen */}
       {(selectedTxn || loadingDetail) && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="fixed inset-0 bg-black/50 md:flex md:items-center md:justify-center md:p-4 z-50">
+          <div className="bg-white w-full h-full md:h-auto md:rounded-lg md:max-w-2xl md:max-h-[90vh] overflow-hidden flex flex-col">
             {loadingDetail ? (
               <div className="flex items-center justify-center py-20">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>

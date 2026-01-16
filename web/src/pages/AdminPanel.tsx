@@ -215,10 +215,10 @@ export default function AdminPanel() {
         </button>
       </div>
 
-      {/* New Company Form Modal */}
+      {/* New Company Form Modal/Full Screen */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+        <div className="fixed inset-0 bg-black/50 md:flex md:items-center md:justify-center md:p-4 z-50">
+          <div className="bg-white w-full h-full md:h-auto md:rounded-lg p-6 md:max-w-md overflow-auto">
             <h2 className="text-lg font-semibold mb-4">新規顧問先追加</h2>
             <form onSubmit={handleCreateCompany} className="space-y-4">
               <div>
@@ -386,11 +386,11 @@ export default function AdminPanel() {
         )}
       </div>
 
-      {/* Company Detail Modal */}
+      {/* Company Detail Modal/Full Screen */}
       {selectedCompany && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-            <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+        <div className="fixed inset-0 bg-black/50 md:flex md:items-center md:justify-center md:p-4 z-50">
+          <div className="bg-white w-full h-full md:h-auto md:rounded-lg md:max-w-4xl md:max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="p-4 md:p-6 border-b border-gray-200 flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-semibold">{selectedCompany.name}</h2>
                 <div className="flex gap-4 mt-1 text-sm text-gray-600">
@@ -491,10 +491,10 @@ export default function AdminPanel() {
         </div>
       )}
 
-      {/* Transaction Detail Modal */}
+      {/* Transaction Detail Modal/Full Screen */}
       {(selectedTxn || loadingTxnDetail) && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[60]">
-          <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="fixed inset-0 bg-black/50 md:flex md:items-center md:justify-center md:p-4 z-[60]">
+          <div className="bg-white w-full h-full md:h-auto md:rounded-lg md:max-w-2xl md:max-h-[90vh] overflow-hidden flex flex-col">
             {loadingTxnDetail ? (
               <div className="flex items-center justify-center py-20">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
