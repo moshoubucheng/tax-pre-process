@@ -22,12 +22,31 @@ interface PendingTransaction {
   ai_confidence: number | null;
 }
 
+interface TransactionDetail {
+  id: string;
+  transaction_date: string | null;
+  amount: number | null;
+  vendor_name: string | null;
+  account_debit: string | null;
+  account_credit: string;
+  tax_category: string | null;
+  ai_confidence: number | null;
+  status: 'pending' | 'confirmed';
+  image_key: string;
+  created_at: string;
+}
+
 export default function ClientDashboard() {
   const navigate = useNavigate();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([]);
   const [pendingList, setPendingList] = useState<PendingTransaction[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Transaction detail modal
+  const [selectedTxn, setSelectedTxn] = useState<TransactionDetail | null>(null);
+  const [loadingDetail, setLoadingDetail] = useState(false);
+  const [confirming, setConfirming] = useState(false);
 
   useEffect(() => {
     loadDashboard();
@@ -48,6 +67,54 @@ export default function ClientDashboard() {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function openTransactionDetail(id: string) {
+    setLoadingDetail(true);
+    try {
+      const res = await api.get<{ data: TransactionDetail }>(`/transactions/${id}`);
+      setSelectedTxn(res.data);
+    } catch (err) {
+      console.error('Failed to load transaction:', err);
+      alert('取引情報の取得に失敗しました');
+    } finally {
+      setLoadingDetail(false);
+    }
+  }
+
+  function closeDetail() {
+    setSelectedTxn(null);
+  }
+
+  async function handleConfirm() {
+    if (!selectedTxn) return;
+    setConfirming(true);
+    try {
+      await api.put(`/transactions/${selectedTxn.id}/confirm`, {});
+      // Update local state
+      setSelectedTxn({ ...selectedTxn, status: 'confirmed' });
+      setPendingList(pendingList.filter(t => t.id !== selectedTxn.id));
+      if (stats) {
+        setStats({
+          ...stats,
+          pending_count: stats.pending_count - 1,
+          confirmed_count: stats.confirmed_count + 1,
+        });
+      }
+    } catch (err) {
+      console.error('Failed to confirm:', err);
+      alert('確定に失敗しました');
+    } finally {
+      setConfirming(false);
+    }
+  }
+
+  function getImageUrl(transactionId: string): string {
+    const token = localStorage.getItem('token');
+    const baseUrl = import.meta.env.PROD
+      ? 'https://tax-api.759nxrb6x4-bc3.workers.dev/api'
+      : '/api';
+    return `${baseUrl}/upload/transaction/${transactionId}/image?token=${token}`;
   }
 
   if (loading) {
@@ -127,7 +194,11 @@ export default function ClientDashboard() {
         ) : (
           <ul className="divide-y divide-gray-100">
             {pendingList.map((txn) => (
-              <li key={txn.id} className="py-3 flex items-center justify-between">
+              <li
+                key={txn.id}
+                onClick={() => openTransactionDetail(txn.id)}
+                className="py-3 flex items-center justify-between cursor-pointer hover:bg-gray-50 -mx-4 px-4 transition-colors"
+              >
                 <div>
                   <p className="font-medium text-gray-900">
                     {txn.vendor_name || '不明な店舗'}
@@ -136,21 +207,129 @@ export default function ClientDashboard() {
                     {txn.transaction_date || '日付不明'}
                   </p>
                 </div>
-                <div className="text-right">
-                  <p className="font-medium text-gray-900">
-                    ¥{(txn.amount || 0).toLocaleString()}
-                  </p>
-                  {txn.ai_confidence !== null && txn.ai_confidence < 70 && (
-                    <span className="text-xs text-red-600">
-                      要確認 ({txn.ai_confidence}%)
-                    </span>
-                  )}
+                <div className="text-right flex items-center gap-2">
+                  <div>
+                    <p className="font-medium text-gray-900">
+                      ¥{(txn.amount || 0).toLocaleString()}
+                    </p>
+                    {txn.ai_confidence !== null && txn.ai_confidence < 70 && (
+                      <span className="text-xs text-red-600">
+                        要確認 ({txn.ai_confidence}%)
+                      </span>
+                    )}
+                  </div>
+                  <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
                 </div>
               </li>
             ))}
           </ul>
         )}
       </div>
+
+      {/* Transaction Detail Modal */}
+      {(selectedTxn || loadingDetail) && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+            {loadingDetail ? (
+              <div className="flex items-center justify-center py-20">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+              </div>
+            ) : selectedTxn ? (
+              <>
+                <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+                  <h2 className="text-lg font-semibold">取引詳細</h2>
+                  <button
+                    onClick={closeDetail}
+                    className="text-gray-500 hover:text-gray-700 text-2xl leading-none"
+                  >
+                    ×
+                  </button>
+                </div>
+
+                <div className="flex-1 overflow-auto p-4 space-y-4">
+                  {/* Receipt Image */}
+                  <div className="bg-gray-100 rounded-lg overflow-hidden">
+                    <img
+                      src={getImageUrl(selectedTxn.id)}
+                      alt="領収書"
+                      className="w-full h-auto max-h-64 object-contain"
+                    />
+                  </div>
+
+                  {/* Transaction Info */}
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-500">ステータス</span>
+                      <span className={`px-2 py-1 rounded-full text-sm ${
+                        selectedTxn.status === 'confirmed'
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-orange-100 text-orange-700'
+                      }`}>
+                        {selectedTxn.status === 'confirmed' ? '確認済' : '要確認'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">店舗名</span>
+                      <span className="font-medium">{selectedTxn.vendor_name || '不明'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">日付</span>
+                      <span className="font-medium">{selectedTxn.transaction_date || '不明'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">金額</span>
+                      <span className="font-medium text-lg">¥{(selectedTxn.amount || 0).toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">勘定科目（借方）</span>
+                      <span className="font-medium">{selectedTxn.account_debit || '未設定'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">勘定科目（貸方）</span>
+                      <span className="font-medium">{selectedTxn.account_credit || '未設定'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">税区分</span>
+                      <span className="font-medium">{selectedTxn.tax_category || '未設定'}</span>
+                    </div>
+                    {selectedTxn.ai_confidence !== null && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">AI信頼度</span>
+                        <span className={`font-medium ${
+                          selectedTxn.ai_confidence >= 80 ? 'text-green-600' :
+                          selectedTxn.ai_confidence >= 60 ? 'text-orange-600' : 'text-red-600'
+                        }`}>
+                          {selectedTxn.ai_confidence}%
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="p-4 border-t border-gray-200 flex justify-end gap-2">
+                  {selectedTxn.status === 'pending' && (
+                    <button
+                      onClick={handleConfirm}
+                      disabled={confirming}
+                      className="px-4 py-2 bg-green-600 text-white rounded-md text-sm disabled:opacity-50"
+                    >
+                      {confirming ? '処理中...' : '確定する'}
+                    </button>
+                  )}
+                  <button
+                    onClick={closeDetail}
+                    className="px-4 py-2 border border-gray-300 rounded-md text-sm"
+                  >
+                    閉じる
+                  </button>
+                </div>
+              </>
+            ) : null}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
