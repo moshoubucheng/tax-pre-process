@@ -34,41 +34,6 @@ interface TransactionDetail {
   created_at: string;
 }
 
-interface CompanyDocuments {
-  id: string;
-  company_id: string;
-  tohon_key: string | null;
-  teikan_key: string | null;
-  zairyu_card_key: string | null;
-  juminhyo_key: string | null;
-  kaigyo_doc1_key: string | null;
-  kaigyo_doc2_key: string | null;
-  kaigyo_doc3_key: string | null;
-  kaigyo_doc4_key: string | null;
-  kaigyo_doc5_key: string | null;
-  kaigyo_doc6_key: string | null;
-  shacho_phone: string | null;
-  shacho_name_reading: string | null;
-  kazoku_name_reading: string | null;
-  kazoku_info: string | null;
-  shacho_income: string | null;
-  kazoku_income: string | null;
-  salary_start_date: string | null;
-  kousei_nenkin: string | null;
-  kokuzei_info: string | null;
-  chihouzei_info: string | null;
-  status: 'draft' | 'submitted' | 'confirmed';
-  confirmed_at: string | null;
-}
-
-const PDF_FIELDS = [
-  { key: 'tohon', label: '謄本' },
-  { key: 'teikan', label: '定款' },
-  { key: 'zairyu_card', label: '社長・家族在留カード' },
-  { key: 'juminhyo', label: '住民票（マイナンバー記載）' },
-  { key: 'kaigyo_doc', label: '開業届出書類' },
-] as const;
-
 export default function AdminPanel() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
@@ -88,24 +53,6 @@ export default function AdminPanel() {
   // Transaction detail modal
   const [selectedTxn, setSelectedTxn] = useState<TransactionDetail | null>(null);
   const [loadingTxnDetail, setLoadingTxnDetail] = useState(false);
-
-  // Documents review modal
-  const [docsCompany, setDocsCompany] = useState<Company | null>(null);
-  const [companyDocs, setCompanyDocs] = useState<CompanyDocuments | null>(null);
-  const [loadingDocs, setLoadingDocs] = useState(false);
-  const [editingDocs, setEditingDocs] = useState(false);
-  const [savingDocs, setSavingDocs] = useState(false);
-  const [docsFormData, setDocsFormData] = useState({
-    shacho_name_reading: '',
-    shacho_phone: '',
-    kazoku_info: '',
-    shacho_income: '',
-    kazoku_income: '',
-    salary_start_date: '',
-    kousei_nenkin: '',
-    kokuzei_info: '',
-    chihouzei_info: '',
-  });
 
   useEffect(() => {
     loadCompanies();
@@ -218,65 +165,6 @@ export default function AdminPanel() {
     } finally {
       setConfirmingTxn(null);
     }
-  }
-
-  async function openDocsReview(company: Company) {
-    setDocsCompany(company);
-    setLoadingDocs(true);
-    setEditingDocs(false);
-    try {
-      const res = await api.get<{ data: CompanyDocuments | null }>(`/documents/${company.id}`);
-      setCompanyDocs(res.data);
-      if (res.data) {
-        setDocsFormData({
-          shacho_name_reading: res.data.shacho_name_reading || '',
-          shacho_phone: res.data.shacho_phone || '',
-          kazoku_info: res.data.kazoku_info || '',
-          shacho_income: res.data.shacho_income || '',
-          kazoku_income: res.data.kazoku_income || '',
-          salary_start_date: res.data.salary_start_date || '',
-          kousei_nenkin: res.data.kousei_nenkin || '',
-          kokuzei_info: res.data.kokuzei_info || '',
-          chihouzei_info: res.data.chihouzei_info || '',
-        });
-      }
-    } catch (err) {
-      console.error('Failed to load documents:', err);
-      setCompanyDocs(null);
-    } finally {
-      setLoadingDocs(false);
-    }
-  }
-
-  function closeDocsReview() {
-    setDocsCompany(null);
-    setCompanyDocs(null);
-    setEditingDocs(false);
-  }
-
-  async function handleSaveDocs() {
-    if (!docsCompany) return;
-    setSavingDocs(true);
-    try {
-      await api.put(`/admin/documents/${docsCompany.id}`, docsFormData);
-      // Reload docs
-      const res = await api.get<{ data: CompanyDocuments | null }>(`/documents/${docsCompany.id}`);
-      setCompanyDocs(res.data);
-      setEditingDocs(false);
-      alert('保存しました');
-    } catch (err) {
-      alert(err instanceof Error ? err.message : '保存に失敗しました');
-    } finally {
-      setSavingDocs(false);
-    }
-  }
-
-  function getDocFileUrl(field: string, companyId: string): string {
-    const token = localStorage.getItem('token');
-    const baseUrl = import.meta.env.PROD
-      ? 'https://tax-api.759nxrb6x4-bc3.workers.dev/api'
-      : '/api';
-    return `${baseUrl}/documents/file/${field}?token=${token}&company_id=${companyId}`;
   }
 
   async function handleCreateCompany(e: React.FormEvent) {
@@ -446,13 +334,7 @@ export default function AdminPanel() {
                   <td className="px-6 py-4 whitespace-nowrap text-orange-600">
                     {company.pending_count}件
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right space-x-3">
-                    <button
-                      onClick={() => openDocsReview(company)}
-                      className="text-gray-600 hover:text-gray-800 text-sm"
-                    >
-                      書類
-                    </button>
+                  <td className="px-6 py-4 whitespace-nowrap text-right">
                     <button
                       onClick={() => handleExport(company.id)}
                       disabled={exporting === company.id}
@@ -485,21 +367,13 @@ export default function AdminPanel() {
                   <span className="text-green-600">確認済: {company.confirmed_count}</span>
                   <span className="text-orange-600">要確認: {company.pending_count}</span>
                 </div>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => openDocsReview(company)}
-                    className="text-gray-600 text-sm"
-                  >
-                    書類
-                  </button>
-                  <button
-                    onClick={() => handleExport(company.id)}
-                    disabled={exporting === company.id}
-                    className="text-primary-600 text-sm"
-                  >
-                    CSV出力
-                  </button>
-                </div>
+                <button
+                  onClick={() => handleExport(company.id)}
+                  disabled={exporting === company.id}
+                  className="text-primary-600 text-sm"
+                >
+                  CSV出力
+                </button>
               </div>
             </div>
           ))}
@@ -723,244 +597,6 @@ export default function AdminPanel() {
         </div>
       )}
 
-      {/* Documents Review Modal/Full Screen */}
-      {(docsCompany || loadingDocs) && (
-        <div className="fixed inset-0 bg-black/50 md:flex md:items-center md:justify-center md:p-4 z-50">
-          <div className="bg-white w-full h-full md:h-auto md:rounded-lg md:max-w-3xl md:max-h-[90vh] overflow-hidden flex flex-col">
-            {loadingDocs ? (
-              <div className="flex items-center justify-center py-20">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-              </div>
-            ) : docsCompany ? (
-              <>
-                <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-                  <h2 className="text-lg font-semibold">{docsCompany.name} - 会社書類</h2>
-                  <button
-                    onClick={closeDocsReview}
-                    className="text-gray-500 hover:text-gray-700 text-2xl leading-none"
-                  >
-                    ×
-                  </button>
-                </div>
-
-                <div className="flex-1 overflow-auto p-4 space-y-6">
-                  {!companyDocs ? (
-                    <div className="text-center py-12 text-gray-500">
-                      書類がまだ登録されていません
-                    </div>
-                  ) : (
-                    <>
-                      {/* PDF Files */}
-                      <div className="space-y-3">
-                        <h3 className="font-semibold text-gray-900">PDF書類</h3>
-                        <div className="grid gap-2">
-                          {PDF_FIELDS.map((field) => {
-                            const keyField = `${field.key}_key` as keyof CompanyDocuments;
-                            const hasFile = companyDocs[keyField];
-                            return (
-                              <div key={field.key} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                                <span className="text-sm font-medium text-gray-900">{field.label}</span>
-                                {hasFile ? (
-                                  <div className="flex gap-3">
-                                    <a
-                                      href={getDocFileUrl(field.key, docsCompany.id)}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="text-sm text-primary-600 hover:underline"
-                                    >
-                                      確認
-                                    </a>
-                                    <a
-                                      href={getDocFileUrl(field.key, docsCompany.id)}
-                                      download={`${field.label}.pdf`}
-                                      className="text-sm text-gray-600 hover:underline"
-                                    >
-                                      ダウンロード
-                                    </a>
-                                  </div>
-                                ) : (
-                                  <span className="text-sm text-gray-400">未アップロード</span>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      {/* Text Information */}
-                      <div className="space-y-3">
-                        <h3 className="font-semibold text-gray-900">その他の情報</h3>
-                        {editingDocs ? (
-                          <div className="space-y-4">
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">社長名（フリガナ）</label>
-                              <input
-                                type="text"
-                                value={docsFormData.shacho_name_reading}
-                                onChange={(e) => setDocsFormData({ ...docsFormData, shacho_name_reading: e.target.value })}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">社長連絡先電話番号</label>
-                              <input
-                                type="tel"
-                                value={docsFormData.shacho_phone}
-                                onChange={(e) => setDocsFormData({ ...docsFormData, shacho_phone: e.target.value })}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">家族情報</label>
-                              <textarea
-                                value={docsFormData.kazoku_info}
-                                onChange={(e) => setDocsFormData({ ...docsFormData, kazoku_info: e.target.value })}
-                                rows={3}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                              />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">社長年収</label>
-                                <input
-                                  type="text"
-                                  value={docsFormData.shacho_income}
-                                  onChange={(e) => setDocsFormData({ ...docsFormData, shacho_income: e.target.value })}
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">家族年収</label>
-                                <input
-                                  type="text"
-                                  value={docsFormData.kazoku_income}
-                                  onChange={(e) => setDocsFormData({ ...docsFormData, kazoku_income: e.target.value })}
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                                />
-                              </div>
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">給与支給開始時期</label>
-                              <input
-                                type="text"
-                                value={docsFormData.salary_start_date}
-                                onChange={(e) => setDocsFormData({ ...docsFormData, salary_start_date: e.target.value })}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">厚生年金</label>
-                              <input
-                                type="text"
-                                value={docsFormData.kousei_nenkin}
-                                onChange={(e) => setDocsFormData({ ...docsFormData, kousei_nenkin: e.target.value })}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">国税情報</label>
-                              <input
-                                type="text"
-                                value={docsFormData.kokuzei_info}
-                                onChange={(e) => setDocsFormData({ ...docsFormData, kokuzei_info: e.target.value })}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">地方税情報</label>
-                              <input
-                                type="text"
-                                value={docsFormData.chihouzei_info}
-                                onChange={(e) => setDocsFormData({ ...docsFormData, chihouzei_info: e.target.value })}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                              />
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="space-y-2 text-sm">
-                            <div className="flex justify-between py-2 border-b border-gray-100">
-                              <span className="text-gray-500">社長名（フリガナ）</span>
-                              <span className="font-medium">{companyDocs.shacho_name_reading || '未入力'}</span>
-                            </div>
-                            <div className="flex justify-between py-2 border-b border-gray-100">
-                              <span className="text-gray-500">社長連絡先電話番号</span>
-                              <span className="font-medium">{companyDocs.shacho_phone || '未入力'}</span>
-                            </div>
-                            <div className="py-2 border-b border-gray-100">
-                              <span className="text-gray-500 block mb-1">家族情報</span>
-                              <span className="font-medium whitespace-pre-wrap">{companyDocs.kazoku_info || '未入力'}</span>
-                            </div>
-                            <div className="flex justify-between py-2 border-b border-gray-100">
-                              <span className="text-gray-500">社長年収</span>
-                              <span className="font-medium">{companyDocs.shacho_income || '未入力'}</span>
-                            </div>
-                            <div className="flex justify-between py-2 border-b border-gray-100">
-                              <span className="text-gray-500">家族年収</span>
-                              <span className="font-medium">{companyDocs.kazoku_income || '未入力'}</span>
-                            </div>
-                            <div className="flex justify-between py-2 border-b border-gray-100">
-                              <span className="text-gray-500">給与支給開始時期</span>
-                              <span className="font-medium">{companyDocs.salary_start_date || '未入力'}</span>
-                            </div>
-                            <div className="flex justify-between py-2 border-b border-gray-100">
-                              <span className="text-gray-500">厚生年金</span>
-                              <span className="font-medium">{companyDocs.kousei_nenkin || '未入力'}</span>
-                            </div>
-                            <div className="flex justify-between py-2 border-b border-gray-100">
-                              <span className="text-gray-500">国税情報</span>
-                              <span className="font-medium">{companyDocs.kokuzei_info || '未入力'}</span>
-                            </div>
-                            <div className="flex justify-between py-2 border-b border-gray-100">
-                              <span className="text-gray-500">地方税情報</span>
-                              <span className="font-medium">{companyDocs.chihouzei_info || '未入力'}</span>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                <div className="p-4 border-t border-gray-200 flex justify-end gap-2">
-                  {companyDocs && !editingDocs && (
-                    <button
-                      onClick={() => setEditingDocs(true)}
-                      className="px-4 py-2 bg-gray-600 text-white rounded-md text-sm"
-                    >
-                      編集
-                    </button>
-                  )}
-                  {editingDocs && (
-                    <>
-                      <button
-                        onClick={() => setEditingDocs(false)}
-                        className="px-4 py-2 border border-gray-300 rounded-md text-sm"
-                      >
-                        キャンセル
-                      </button>
-                      <button
-                        onClick={handleSaveDocs}
-                        disabled={savingDocs}
-                        className="px-4 py-2 bg-primary-600 text-white rounded-md text-sm disabled:opacity-50"
-                      >
-                        {savingDocs ? '保存中...' : '保存'}
-                      </button>
-                    </>
-                  )}
-                  {!editingDocs && (
-                    <button
-                      onClick={closeDocsReview}
-                      className="px-4 py-2 border border-gray-300 rounded-md text-sm"
-                    >
-                      閉じる
-                    </button>
-                  )}
-                </div>
-              </>
-            ) : null}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
