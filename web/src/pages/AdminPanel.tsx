@@ -62,6 +62,7 @@ export default function AdminPanel() {
   const [settlementModal, setSettlementModal] = useState<{ company: Company } | null>(null);
   const [settlementInput, setSettlementInput] = useState('');
   const [confirmingSettlement, setConfirmingSettlement] = useState(false);
+  const [resettingSettlement, setResettingSettlement] = useState(false);
 
   useEffect(() => {
     loadCompanies();
@@ -112,6 +113,26 @@ export default function AdminPanel() {
       alert(err instanceof Error ? err.message : '決算確認に失敗しました');
     } finally {
       setConfirmingSettlement(false);
+    }
+  }
+
+  async function handleResetSettlement(company: Company) {
+    if (!confirm(`${company.name}の決算ステータスをリセットしますか？\n（事業年度終了アラートが再度表示されます）`)) return;
+
+    setResettingSettlement(true);
+    try {
+      await api.delete(`/admin/companies/${company.id}/settlement`);
+      // Reload companies to get updated settlement_color
+      await loadCompanies();
+      // Update selected company if open
+      if (selectedCompany?.id === company.id) {
+        setSelectedCompany({ ...selectedCompany, settlement_confirmed: 0 });
+      }
+      alert('決算ステータスをリセットしました');
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'リセットに失敗しました');
+    } finally {
+      setResettingSettlement(false);
     }
   }
 
@@ -558,20 +579,33 @@ export default function AdminPanel() {
               )}
             </div>
 
-            <div className="p-4 border-t border-gray-200 flex justify-end gap-2">
-              <button
-                onClick={() => handleExport(selectedCompany.id)}
-                disabled={exporting === selectedCompany.id}
-                className="px-4 py-2 bg-primary-600 text-white rounded-md text-sm disabled:opacity-50"
-              >
-                {exporting === selectedCompany.id ? 'エクスポート中...' : '弥生CSV出力'}
-              </button>
-              <button
-                onClick={closeCompanyDetail}
-                className="px-4 py-2 border border-gray-300 rounded-md text-sm"
-              >
-                閉じる
-              </button>
+            <div className="p-4 border-t border-gray-200 flex justify-between">
+              <div>
+                {selectedCompany.settlement_confirmed === 1 && (
+                  <button
+                    onClick={() => handleResetSettlement(selectedCompany)}
+                    disabled={resettingSettlement}
+                    className="px-4 py-2 bg-orange-100 text-orange-700 rounded-md text-sm hover:bg-orange-200 disabled:opacity-50"
+                  >
+                    {resettingSettlement ? 'リセット中...' : '決算リセット'}
+                  </button>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleExport(selectedCompany.id)}
+                  disabled={exporting === selectedCompany.id}
+                  className="px-4 py-2 bg-primary-600 text-white rounded-md text-sm disabled:opacity-50"
+                >
+                  {exporting === selectedCompany.id ? 'エクスポート中...' : '弥生CSV出力'}
+                </button>
+                <button
+                  onClick={closeCompanyDetail}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-sm"
+                >
+                  閉じる
+                </button>
+              </div>
             </div>
           </div>
         </div>
