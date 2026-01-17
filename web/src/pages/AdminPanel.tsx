@@ -731,20 +731,9 @@ export default function AdminPanel() {
               </span>
               の決算を完了するには、以下を入力してください：
             </p>
-            <div className="flex items-center gap-2 mb-2">
-              <p className="text-sm text-gray-500">
-                「<span className="font-medium text-gray-900">{settlementModal.company.name.trim()}決算完了</span>」と入力
-              </p>
-              <button
-                type="button"
-                onClick={() => {
-                  setSettlementInput(`${settlementModal.company.name.trim()}決算完了`);
-                }}
-                className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded hover:bg-gray-200"
-              >
-                自動入力
-              </button>
-            </div>
+            <p className="text-sm text-gray-500 mb-2">
+              「<span className="font-medium text-gray-900">{settlementModal.company.name.trim()}決算完了</span>」と入力
+            </p>
             <input
               type="text"
               value={settlementInput}
