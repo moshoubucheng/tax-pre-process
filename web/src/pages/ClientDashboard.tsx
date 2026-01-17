@@ -44,6 +44,26 @@ interface TransactionDetail {
   created_at: string;
 }
 
+const ACCOUNT_OPTIONS = [
+  '旅費交通費',
+  '接待交際費',
+  '会議費',
+  '消耗品費',
+  '通信費',
+  '事務用品費',
+  '水道光熱費',
+  '広告宣伝費',
+  '外注費',
+  '雑費',
+];
+
+const TAX_OPTIONS = [
+  '課対仕入内8%',
+  '課対仕入内10%',
+  '非課税仕入',
+  '対象外',
+];
+
 export default function ClientDashboard() {
   const navigate = useNavigate();
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -56,6 +76,18 @@ export default function ClientDashboard() {
   // Transaction detail modal
   const [selectedTxn, setSelectedTxn] = useState<TransactionDetail | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
+
+  // Edit mode
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState({
+    transaction_date: '',
+    amount: '',
+    vendor_name: '',
+    account_debit: '',
+    tax_category: '',
+  });
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     loadDashboard();
@@ -97,6 +129,92 @@ export default function ClientDashboard() {
 
   function closeDetail() {
     setSelectedTxn(null);
+    setIsEditing(false);
+  }
+
+  function startEditing() {
+    if (!selectedTxn) return;
+    setEditForm({
+      transaction_date: selectedTxn.transaction_date || '',
+      amount: selectedTxn.amount?.toString() || '',
+      vendor_name: selectedTxn.vendor_name || '',
+      account_debit: selectedTxn.account_debit || '',
+      tax_category: selectedTxn.tax_category || '',
+    });
+    setIsEditing(true);
+  }
+
+  async function handleSaveEdit() {
+    if (!selectedTxn) return;
+
+    setSaving(true);
+    try {
+      await api.put(`/transactions/${selectedTxn.id}`, {
+        transaction_date: editForm.transaction_date,
+        amount: parseInt(editForm.amount) || 0,
+        vendor_name: editForm.vendor_name,
+        account_debit: editForm.account_debit,
+        tax_category: editForm.tax_category,
+      });
+
+      // Update local state
+      setSelectedTxn({
+        ...selectedTxn,
+        transaction_date: editForm.transaction_date,
+        amount: parseInt(editForm.amount) || 0,
+        vendor_name: editForm.vendor_name,
+        account_debit: editForm.account_debit,
+        tax_category: editForm.tax_category,
+      });
+
+      // Update lists
+      const updateList = (list: PendingTransaction[]) =>
+        list.map(t => t.id === selectedTxn.id ? {
+          ...t,
+          transaction_date: editForm.transaction_date,
+          amount: parseInt(editForm.amount) || 0,
+          vendor_name: editForm.vendor_name,
+        } : t);
+
+      setPendingList(updateList(pendingList));
+      setConfirmedList(updateList(confirmedList));
+
+      setIsEditing(false);
+      alert('保存しました');
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '保存に失敗しました');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!selectedTxn) return;
+
+    if (!confirm('この取引を削除しますか？\nこの操作は取り消せません。')) return;
+
+    setDeleting(true);
+    try {
+      await api.delete(`/transactions/${selectedTxn.id}`);
+
+      // Remove from lists
+      setPendingList(pendingList.filter(t => t.id !== selectedTxn.id));
+      setConfirmedList(confirmedList.filter(t => t.id !== selectedTxn.id));
+
+      // Update stats
+      if (stats && selectedTxn.status === 'pending') {
+        setStats({ ...stats, pending_count: stats.pending_count - 1 });
+      } else if (stats && selectedTxn.status === 'confirmed') {
+        setStats({ ...stats, confirmed_count: stats.confirmed_count - 1 });
+      }
+
+      closeDetail();
+      alert('削除しました');
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '削除に失敗しました');
+    } finally {
+      setDeleting(false);
+    }
   }
 
   function getImageUrl(transactionId: string): string {
@@ -323,72 +441,164 @@ export default function ClientDashboard() {
                     />
                   </div>
 
-                  {/* Transaction Info */}
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-500">ステータス</span>
-                      <span className={`px-2 py-1 rounded-full text-sm ${
-                        selectedTxn.status === 'confirmed'
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-orange-100 text-orange-700'
-                      }`}>
-                        {selectedTxn.status === 'confirmed' ? '確認済' : '要確認'}
-                      </span>
+                  {/* Edit Form or View Mode */}
+                  {isEditing ? (
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">日付</label>
+                        <input
+                          type="date"
+                          value={editForm.transaction_date}
+                          onChange={(e) => setEditForm({ ...editForm, transaction_date: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">金額</label>
+                        <input
+                          type="number"
+                          value={editForm.amount}
+                          onChange={(e) => setEditForm({ ...editForm, amount: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">店名/取引先</label>
+                        <input
+                          type="text"
+                          value={editForm.vendor_name}
+                          onChange={(e) => setEditForm({ ...editForm, vendor_name: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">勘定科目</label>
+                        <select
+                          value={editForm.account_debit}
+                          onChange={(e) => setEditForm({ ...editForm, account_debit: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                        >
+                          <option value="">選択してください</option>
+                          {ACCOUNT_OPTIONS.map((opt) => (
+                            <option key={opt} value={opt}>{opt}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">税区分</label>
+                        <select
+                          value={editForm.tax_category}
+                          onChange={(e) => setEditForm({ ...editForm, tax_category: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                        >
+                          <option value="">選択してください</option>
+                          {TAX_OPTIONS.map((opt) => (
+                            <option key={opt} value={opt}>{opt}</option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">店舗名</span>
-                      <span className="font-medium">{selectedTxn.vendor_name || '不明'}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">日付</span>
-                      <span className="font-medium">{selectedTxn.transaction_date || '不明'}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">金額</span>
-                      <span className="font-medium text-lg">¥{(selectedTxn.amount || 0).toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">勘定科目（借方）</span>
-                      <span className="font-medium">{selectedTxn.account_debit || '未設定'}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">勘定科目（貸方）</span>
-                      <span className="font-medium">{selectedTxn.account_credit || '未設定'}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">税区分</span>
-                      <span className="font-medium">{selectedTxn.tax_category || '未設定'}</span>
-                    </div>
-                    {selectedTxn.ai_confidence !== null && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">AI信頼度</span>
-                        <span className={`font-medium ${
-                          selectedTxn.ai_confidence >= 80 ? 'text-green-600' :
-                          selectedTxn.ai_confidence >= 60 ? 'text-orange-600' : 'text-red-600'
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-500">ステータス</span>
+                        <span className={`px-2 py-1 rounded-full text-sm ${
+                          selectedTxn.status === 'confirmed'
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-orange-100 text-orange-700'
                         }`}>
-                          {selectedTxn.ai_confidence}%
+                          {selectedTxn.status === 'confirmed' ? '確認済' : '要確認'}
                         </span>
                       </div>
-                    )}
-                  </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">店舗名</span>
+                        <span className="font-medium">{selectedTxn.vendor_name || '不明'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">日付</span>
+                        <span className="font-medium">{selectedTxn.transaction_date || '不明'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">金額</span>
+                        <span className="font-medium text-lg">¥{(selectedTxn.amount || 0).toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">勘定科目（借方）</span>
+                        <span className="font-medium">{selectedTxn.account_debit || '未設定'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">勘定科目（貸方）</span>
+                        <span className="font-medium">{selectedTxn.account_credit || '未設定'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">税区分</span>
+                        <span className="font-medium">{selectedTxn.tax_category || '未設定'}</span>
+                      </div>
+                      {selectedTxn.ai_confidence !== null && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">AI信頼度</span>
+                          <span className={`font-medium ${
+                            selectedTxn.ai_confidence >= 80 ? 'text-green-600' :
+                            selectedTxn.ai_confidence >= 60 ? 'text-orange-600' : 'text-red-600'
+                          }`}>
+                            {selectedTxn.ai_confidence}%
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
-                <div className="p-4 border-t border-gray-200 flex items-center justify-between">
-                  {selectedTxn.status === 'pending' ? (
-                    <span className="text-sm text-orange-600">
-                      ※ 管理者の確認待ちです
-                    </span>
+                <div className="p-4 border-t border-gray-200">
+                  {isEditing ? (
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setIsEditing(false)}
+                        className="flex-1 py-2 border border-gray-300 rounded-md text-sm"
+                      >
+                        キャンセル
+                      </button>
+                      <button
+                        onClick={handleSaveEdit}
+                        disabled={saving}
+                        className="flex-1 py-2 bg-primary-600 text-white rounded-md text-sm disabled:opacity-50"
+                      >
+                        {saving ? '保存中...' : '保存'}
+                      </button>
+                    </div>
                   ) : (
-                    <span className="text-sm text-green-600">
-                      ✓ 管理者により確認済み
-                    </span>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        {selectedTxn.status === 'pending' ? (
+                          <div className="flex gap-2">
+                            <button
+                              onClick={startEditing}
+                              className="px-3 py-1.5 text-sm text-primary-600 border border-primary-600 rounded-md hover:bg-primary-50"
+                            >
+                              編集
+                            </button>
+                            <button
+                              onClick={handleDelete}
+                              disabled={deleting}
+                              className="px-3 py-1.5 text-sm text-red-600 border border-red-600 rounded-md hover:bg-red-50 disabled:opacity-50"
+                            >
+                              {deleting ? '削除中...' : '削除'}
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-sm text-green-600">
+                            ✓ 管理者により確認済み
+                          </span>
+                        )}
+                      </div>
+                      <button
+                        onClick={closeDetail}
+                        className="px-4 py-2 border border-gray-300 rounded-md text-sm"
+                      >
+                        閉じる
+                      </button>
+                    </div>
                   )}
-                  <button
-                    onClick={closeDetail}
-                    className="px-4 py-2 border border-gray-300 rounded-md text-sm"
-                  >
-                    閉じる
-                  </button>
                 </div>
               </>
             ) : null}

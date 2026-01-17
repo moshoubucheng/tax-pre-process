@@ -197,6 +197,11 @@ transactions.delete('/:id', async (c) => {
       return c.json({ error: 'アクセス権限がありません' }, 403);
     }
 
+    // Clients cannot delete confirmed transactions
+    if (user.role !== 'admin' && transaction.status === 'confirmed') {
+      return c.json({ error: '確認済みの取引は削除できません' }, 403);
+    }
+
     // Also delete from R2
     try {
       await c.env.BUCKET.delete(transaction.image_key);

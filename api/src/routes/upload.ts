@@ -125,7 +125,7 @@ upload.post('/', async (c) => {
   }
 });
 
-// POST /api/upload/manual - Create transaction manually without image
+// POST /api/upload/manual - Create transaction manually with image (no AI)
 upload.post('/manual', async (c) => {
   try {
     const user = c.get('user');
@@ -134,28 +134,73 @@ upload.post('/manual', async (c) => {
       return c.json({ error: '会社情報が見つかりません' }, 400);
     }
 
-    const body = await c.req.json();
+    // Parse multipart form data
+    const formData = await c.req.formData();
+    const fileEntry = formData.get('file');
+
+    if (!fileEntry || typeof fileEntry === 'string') {
+      return c.json({ error: '画像ファイルは必須です' }, 400);
+    }
+
+    const file = fileEntry as File;
+
+    // Validate file size
+    if (file.size > MAX_FILE_SIZE) {
+      return c.json({ error: 'ファイルサイズは10MB以下にしてください' }, 400);
+    }
+
+    // Validate mime type
+    const mimeType = validateImageType(file.type);
+    if (!mimeType) {
+      return c.json({ error: '対応していないファイル形式です (JPEG, PNG, GIF, WebP のみ)' }, 400);
+    }
+
+    // Get form fields
+    const transaction_date = formData.get('transaction_date') as string;
+    const amount = formData.get('amount') as string;
+    const vendor_name = formData.get('vendor_name') as string;
+    const account_debit = formData.get('account_debit') as string;
+    const account_credit = formData.get('account_credit') as string;
+    const tax_category = formData.get('tax_category') as string;
 
     // Validate required fields
-    if (!body.transaction_date || !body.amount) {
+    if (!transaction_date || !amount) {
       return c.json({ error: '日付と金額は必須です' }, 400);
     }
 
-    const timestamp = new Date().toISOString();
+    // Read file data
+    const arrayBuffer = await file.arrayBuffer();
+
+    // Generate R2 key with timestamp
+    const { key, timestamp } = generateR2Key(mimeType);
+
+    // Upload to R2
+    await c.env.BUCKET.put(key, arrayBuffer, {
+      httpMetadata: {
+        contentType: mimeType,
+      },
+      customMetadata: {
+        uploadedAt: timestamp,
+        uploadedBy: user.sub,
+        originalName: file.name,
+        inputMode: 'manual',
+      },
+    });
+
     const transactionId = generateId('txn');
 
     await createTransaction(c.env.DB, {
       id: transactionId,
       company_id: user.company_id,
       uploaded_by: user.sub,
-      image_key: '', // No image for manual input
+      image_key: key,
       image_uploaded_at: timestamp,
-      transaction_date: body.transaction_date,
-      amount: parseInt(body.amount) || 0,
-      vendor_name: body.vendor_name || null,
-      account_debit: body.account_debit || null,
-      account_credit: body.account_credit || '現金',
-      tax_category: body.tax_category || null,
+      transaction_date: transaction_date,
+      amount: parseInt(amount) || 0,
+      vendor_name: vendor_name || null,
+      account_debit: account_debit || null,
+      account_credit: account_credit || '現金',
+      tax_category: tax_category || null,
       ai_confidence: null, // No AI for manual input
       ai_raw_response: null,
       status: 'pending',

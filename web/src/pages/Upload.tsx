@@ -123,6 +123,10 @@ export default function Upload() {
   }
 
   async function handleManualSave() {
+    if (!file) {
+      alert('画像ファイルは必須です');
+      return;
+    }
     if (!formData.transaction_date || !formData.amount) {
       alert('日付と金額は必須です');
       return;
@@ -130,10 +134,32 @@ export default function Upload() {
 
     setSaving(true);
     try {
-      await api.post('/upload/manual', {
-        ...formData,
-        amount: parseInt(formData.amount) || 0,
+      const submitFormData = new FormData();
+      submitFormData.append('file', file);
+      submitFormData.append('transaction_date', formData.transaction_date);
+      submitFormData.append('amount', formData.amount);
+      submitFormData.append('vendor_name', formData.vendor_name);
+      submitFormData.append('account_debit', formData.account_debit);
+      submitFormData.append('tax_category', formData.tax_category);
+
+      const token = localStorage.getItem('token');
+      const baseUrl = import.meta.env.PROD
+        ? 'https://tax-api.759nxrb6x4-bc3.workers.dev/api'
+        : '/api';
+
+      const res = await fetch(`${baseUrl}/upload/manual`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: submitFormData,
       });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || '保存に失敗しました');
+      }
+
       alert('保存しました');
       navigate('/');
     } catch (err) {
@@ -251,6 +277,66 @@ export default function Upload() {
       {mode === 'manual' && (
         <div className="bg-white rounded-lg shadow-sm p-4 space-y-4">
           <h2 className="font-semibold text-gray-900">手動入力</h2>
+
+          {/* Image Upload for Manual Mode */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              領収書画像 <span className="text-red-500">*</span>
+            </label>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+            {preview ? (
+              <div className="space-y-2">
+                <img
+                  src={preview}
+                  alt="Preview"
+                  className="w-full rounded-lg object-contain max-h-48 bg-gray-100"
+                />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full py-2 border border-gray-300 rounded-md text-gray-700 text-sm"
+                >
+                  画像を変更
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full py-8 border-2 border-dashed border-gray-300 rounded-lg hover:border-primary-500 transition-colors"
+              >
+                <div className="text-center">
+                  <svg
+                    className="mx-auto h-8 w-8 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
+                    />
+                  </svg>
+                  <p className="mt-1 text-sm text-gray-600">
+                    タップして写真を撮影
+                  </p>
+                </div>
+              </button>
+            )}
+          </div>
 
           <div className="space-y-3">
             <div>
