@@ -51,17 +51,11 @@ export interface CompanyDocuments {
   teikan_key: string | null;          // 定款
   zairyu_card_key: string | null;     // 在留カード
   juminhyo_key: string | null;        // 住民票
-  kaigyo_doc1_key: string | null;     // 開業申請1
-  kaigyo_doc2_key: string | null;     // 開業申請2
-  kaigyo_doc3_key: string | null;     // 開業申請3
-  kaigyo_doc4_key: string | null;     // 開業申請4
-  kaigyo_doc5_key: string | null;     // 開業申請5
-  kaigyo_doc6_key: string | null;     // 開業申請6
+  kaigyo_doc_key: string | null;      // 開業届出書類
 
   // Text fields
   shacho_phone: string | null;        // 社长电话
   shacho_name_reading: string | null; // 社长名字读音
-  kazoku_name_reading: string | null; // 家族名字读音
   kazoku_info: string | null;         // 家族信息（JSON）
   shacho_income: string | null;       // 社长收入
   kazoku_income: string | null;       // 家族收入
@@ -69,6 +63,8 @@ export interface CompanyDocuments {
   kousei_nenkin: string | null;       // 厚生年金
   kokuzei_info: string | null;        // 国税信息
   chihouzei_info: string | null;      // 地方税信息
+  business_year_start: string | null; // 事業年度開始月
+  business_year_end: string | null;   // 事業年度終了月
 
   // Status
   status: 'draft' | 'submitted' | 'confirmed';
