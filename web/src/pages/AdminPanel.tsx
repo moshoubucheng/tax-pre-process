@@ -34,10 +34,18 @@ interface TransactionDetail {
   created_at: string;
 }
 
+interface BusinessYearAlert {
+  company_id: string;
+  company_name: string;
+  end_month: number;
+  message: string;
+}
+
 export default function AdminPanel() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState<string | null>(null);
+  const [businessYearAlerts, setBusinessYearAlerts] = useState<BusinessYearAlert[]>([]);
 
   // New company form
   const [showForm, setShowForm] = useState(false);
@@ -56,6 +64,7 @@ export default function AdminPanel() {
 
   useEffect(() => {
     loadCompanies();
+    loadBusinessYearAlerts();
   }, []);
 
   async function loadCompanies() {
@@ -66,6 +75,15 @@ export default function AdminPanel() {
       console.error('Failed to load companies:', err);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function loadBusinessYearAlerts() {
+    try {
+      const res = await api.get<{ alerts: BusinessYearAlert[] }>('/admin/business-year-alerts');
+      setBusinessYearAlerts(res.alerts || []);
+    } catch (err) {
+      console.error('Failed to load business year alerts:', err);
     }
   }
 
@@ -205,6 +223,27 @@ export default function AdminPanel() {
 
   return (
     <div className="space-y-6">
+      {/* Business Year Alerts */}
+      {businessYearAlerts.length > 0 && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <svg className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <div className="flex-1">
+              <h3 className="font-semibold text-red-800">事業年度終了のお知らせ</h3>
+              <ul className="mt-2 space-y-1">
+                {businessYearAlerts.map((alert) => (
+                  <li key={alert.company_id} className="text-red-700 text-sm">
+                    {alert.message}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-gray-900">顧問先管理</h1>
         <button

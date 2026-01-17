@@ -6,6 +6,8 @@ import {
   getStatusCounts,
   getMonthlyChartData,
   getTransactionsByCompany,
+  getCompanyDocuments,
+  getCompanyById,
 } from '../db/queries';
 
 const dashboard = new Hono<{ Bindings: Env }>();
@@ -124,6 +126,45 @@ dashboard.get('/confirmed', async (c) => {
   } catch (error) {
     console.error('Confirmed transactions error:', error);
     return c.json({ error: '確認済リストの取得に失敗しました' }, 500);
+  }
+});
+
+// GET /api/dashboard/business-year-alert - Check if business year is ending
+dashboard.get('/business-year-alert', async (c) => {
+  try {
+    const user = c.get('user');
+
+    if (!user.company_id) {
+      return c.json({ alert: false });
+    }
+
+    const docs = await getCompanyDocuments(c.env.DB, user.company_id);
+    if (!docs || !docs.business_year_end) {
+      return c.json({ alert: false });
+    }
+
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1;
+    const currentDay = now.getDate();
+    const endMonth = parseInt(docs.business_year_end);
+
+    // Show alert if current month is the ending month and we're past the 15th
+    const shouldAlert = currentMonth === endMonth && currentDay >= 15;
+
+    if (shouldAlert) {
+      const company = await getCompanyById(c.env.DB, user.company_id);
+      return c.json({
+        alert: true,
+        message: `事業年度が今月末で終了します。決算の準備をお願いします。`,
+        company_name: company?.name || '',
+        end_month: endMonth,
+      });
+    }
+
+    return c.json({ alert: false });
+  } catch (error) {
+    console.error('Business year alert error:', error);
+    return c.json({ alert: false });
   }
 });
 

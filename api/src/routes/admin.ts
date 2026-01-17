@@ -213,4 +213,42 @@ admin.get('/export/:companyId', async (c) => {
   }
 });
 
+// GET /api/admin/business-year-alerts - Get companies with ending business year
+admin.get('/business-year-alerts', async (c) => {
+  try {
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1;
+    const currentDay = now.getDate();
+
+    // Only show alerts from 15th of the month
+    if (currentDay < 15) {
+      return c.json({ alerts: [] });
+    }
+
+    // Get all companies with their documents
+    const companies = await getCompaniesWithStats(c.env.DB);
+    const alerts = [];
+
+    for (const company of companies) {
+      const docs = await getCompanyDocuments(c.env.DB, company.id);
+      if (docs && docs.business_year_end) {
+        const endMonth = parseInt(docs.business_year_end);
+        if (currentMonth === endMonth) {
+          alerts.push({
+            company_id: company.id,
+            company_name: company.name,
+            end_month: endMonth,
+            message: `${company.name}の事業年度が今月末で終了します。`,
+          });
+        }
+      }
+    }
+
+    return c.json({ alerts });
+  } catch (error) {
+    console.error('Business year alerts error:', error);
+    return c.json({ alerts: [] });
+  }
+});
+
 export default admin;
