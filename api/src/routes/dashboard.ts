@@ -143,12 +143,17 @@ dashboard.get('/business-year-alert', async (c) => {
       return c.json({ alert: false });
     }
 
+    // If settlement already confirmed, no alert
+    if (docs.settlement_confirmed === 1) {
+      return c.json({ alert: false });
+    }
+
     const now = new Date();
     const currentMonth = now.getMonth() + 1;
     const currentDay = now.getDate();
     const endMonth = parseInt(docs.business_year_end);
 
-    // Show alert if current month is the ending month and we're past the 15th
+    // Show alert from the 15th of the ending month until settlement is confirmed
     const shouldAlert = currentMonth === endMonth && currentDay >= 15;
 
     if (shouldAlert) {

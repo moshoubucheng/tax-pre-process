@@ -66,6 +66,11 @@ export interface CompanyDocuments {
   business_year_start: string | null; // 事業年度開始月
   business_year_end: string | null;   // 事業年度終了月
 
+  // Settlement status
+  settlement_confirmed: number | null;  // 0 or 1
+  settlement_confirmed_at: string | null;
+  settlement_confirmed_by: string | null;
+
   // Status
   status: 'draft' | 'submitted' | 'confirmed';
   confirmed_by: string | null;

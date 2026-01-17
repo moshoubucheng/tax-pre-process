@@ -335,7 +335,7 @@ export async function updateCompanyDocuments(
   data: Partial<Omit<CompanyDocuments, 'id' | 'company_id' | 'created_at'>>
 ): Promise<void> {
   const fields: string[] = [];
-  const values: (string | null)[] = [];
+  const values: (string | number | null)[] = [];
 
   // Build dynamic update query
   const allowedFields = [
@@ -345,13 +345,14 @@ export async function updateCompanyDocuments(
     'kazoku_info', 'shacho_income', 'kazoku_income', 'salary_start_date',
     'kousei_nenkin', 'kokuzei_info', 'chihouzei_info',
     'business_year_start', 'business_year_end',
+    'settlement_confirmed', 'settlement_confirmed_at', 'settlement_confirmed_by',
     'status', 'confirmed_by', 'confirmed_at'
   ];
 
   for (const field of allowedFields) {
     if (field in data) {
       fields.push(`${field} = ?`);
-      values.push((data as Record<string, string | null>)[field]);
+      values.push((data as Record<string, string | number | null>)[field]);
     }
   }
 

@@ -87,6 +87,19 @@ export default function AdminPanel() {
     }
   }
 
+  async function handleConfirmSettlement(companyId: string, companyName: string) {
+    if (!confirm(`${companyName}の決算完了を確認しますか？`)) return;
+
+    try {
+      await api.put(`/admin/companies/${companyId}/settlement`, {});
+      // Remove from alerts
+      setBusinessYearAlerts(businessYearAlerts.filter(a => a.company_id !== companyId));
+      alert('決算確認完了しました');
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '決算確認に失敗しました');
+    }
+  }
+
   async function handleExport(companyId: string) {
     setExporting(companyId);
     try {
@@ -232,13 +245,19 @@ export default function AdminPanel() {
             </svg>
             <div className="flex-1">
               <h3 className="font-semibold text-red-800">事業年度終了のお知らせ</h3>
-              <ul className="mt-2 space-y-1">
+              <div className="mt-2 space-y-2">
                 {businessYearAlerts.map((alert) => (
-                  <li key={alert.company_id} className="text-red-700 text-sm">
-                    {alert.message}
-                  </li>
+                  <div key={alert.company_id} className="flex items-center justify-between">
+                    <span className="text-red-700 text-sm">{alert.message}</span>
+                    <button
+                      onClick={() => handleConfirmSettlement(alert.company_id, alert.company_name)}
+                      className="px-3 py-1 bg-green-600 text-white text-xs rounded-md hover:bg-green-700"
+                    >
+                      決算完了
+                    </button>
+                  </div>
                 ))}
-              </ul>
+              </div>
             </div>
           </div>
         </div>

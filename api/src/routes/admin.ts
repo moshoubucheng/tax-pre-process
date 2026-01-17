@@ -232,6 +232,10 @@ admin.get('/business-year-alerts', async (c) => {
     for (const company of companies) {
       const docs = await getCompanyDocuments(c.env.DB, company.id);
       if (docs && docs.business_year_end) {
+        // Skip if settlement already confirmed
+        if (docs.settlement_confirmed === 1) {
+          continue;
+        }
         const endMonth = parseInt(docs.business_year_end);
         if (currentMonth === endMonth) {
           alerts.push({
@@ -248,6 +252,60 @@ admin.get('/business-year-alerts', async (c) => {
   } catch (error) {
     console.error('Business year alerts error:', error);
     return c.json({ alerts: [] });
+  }
+});
+
+// PUT /api/admin/companies/:id/settlement - Confirm settlement
+admin.put('/companies/:id/settlement', async (c) => {
+  try {
+    const user = c.get('user');
+    const companyId = c.req.param('id');
+
+    const company = await getCompanyById(c.env.DB, companyId);
+    if (!company) {
+      return c.json({ error: '顧問先が見つかりません' }, 404);
+    }
+
+    const docs = await getCompanyDocuments(c.env.DB, companyId);
+    if (!docs) {
+      return c.json({ error: '書類が見つかりません' }, 404);
+    }
+
+    // Confirm settlement
+    await updateCompanyDocuments(c.env.DB, companyId, {
+      settlement_confirmed: 1,
+      settlement_confirmed_at: new Date().toISOString(),
+      settlement_confirmed_by: user.sub,
+    });
+
+    return c.json({ message: '決算確認完了しました' });
+  } catch (error) {
+    console.error('Settlement confirm error:', error);
+    return c.json({ error: '決算確認に失敗しました' }, 500);
+  }
+});
+
+// DELETE /api/admin/companies/:id/settlement - Reset settlement for new year
+admin.delete('/companies/:id/settlement', async (c) => {
+  try {
+    const companyId = c.req.param('id');
+
+    const company = await getCompanyById(c.env.DB, companyId);
+    if (!company) {
+      return c.json({ error: '顧問先が見つかりません' }, 404);
+    }
+
+    // Reset settlement
+    await updateCompanyDocuments(c.env.DB, companyId, {
+      settlement_confirmed: 0,
+      settlement_confirmed_at: null,
+      settlement_confirmed_by: null,
+    });
+
+    return c.json({ message: '決算ステータスをリセットしました' });
+  } catch (error) {
+    console.error('Settlement reset error:', error);
+    return c.json({ error: 'リセットに失敗しました' }, 500);
   }
 });
 
