@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../lib/api';
+import ImageLightbox from '../components/ImageLightbox';
 
 interface Company {
   id: string;
@@ -63,6 +64,13 @@ export default function AdminPanel() {
   const [settlementInput, setSettlementInput] = useState('');
   const [confirmingSettlement, setConfirmingSettlement] = useState(false);
   const [resettingSettlement, setResettingSettlement] = useState(false);
+
+  // Batch selection
+  const [selectedTxnIds, setSelectedTxnIds] = useState<Set<string>>(new Set());
+  const [batchConfirming, setBatchConfirming] = useState(false);
+
+  // Image lightbox
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
   useEffect(() => {
     loadCompanies();
@@ -181,6 +189,7 @@ export default function AdminPanel() {
   function closeCompanyDetail() {
     setSelectedCompany(null);
     setTransactions([]);
+    setSelectedTxnIds(new Set());
   }
 
   async function openTransactionDetail(txnId: string) {
@@ -234,6 +243,71 @@ export default function AdminPanel() {
       alert(err instanceof Error ? err.message : '確認に失敗しました');
     } finally {
       setConfirmingTxn(null);
+    }
+  }
+
+  // Batch selection functions
+  function toggleTxnSelection(txnId: string) {
+    setSelectedTxnIds(prev => {
+      const next = new Set(prev);
+      if (next.has(txnId)) {
+        next.delete(txnId);
+      } else {
+        next.add(txnId);
+      }
+      return next;
+    });
+  }
+
+  function toggleSelectAllPending() {
+    const pendingTxnIds = transactions.filter(t => t.status === 'pending').map(t => t.id);
+    const allSelected = pendingTxnIds.every(id => selectedTxnIds.has(id));
+
+    if (allSelected) {
+      // Deselect all
+      setSelectedTxnIds(new Set());
+    } else {
+      // Select all pending
+      setSelectedTxnIds(new Set(pendingTxnIds));
+    }
+  }
+
+  async function handleBatchConfirm() {
+    if (selectedTxnIds.size === 0) return;
+
+    setBatchConfirming(true);
+    try {
+      const res = await api.put<{ confirmed_count: number; message: string }>('/transactions/batch-confirm', {
+        ids: Array.from(selectedTxnIds),
+      });
+
+      // Update local state
+      setTransactions(transactions.map(t =>
+        selectedTxnIds.has(t.id) ? { ...t, status: 'confirmed' } : t
+      ));
+
+      // Update company stats
+      if (selectedCompany) {
+        const confirmedCount = res.confirmed_count || selectedTxnIds.size;
+        setSelectedCompany({
+          ...selectedCompany,
+          pending_count: selectedCompany.pending_count - confirmedCount,
+          confirmed_count: selectedCompany.confirmed_count + confirmedCount,
+        });
+        setCompanies(companies.map(c =>
+          c.id === selectedCompany.id
+            ? { ...c, pending_count: c.pending_count - confirmedCount, confirmed_count: c.confirmed_count + confirmedCount }
+            : c
+        ));
+      }
+
+      // Clear selection
+      setSelectedTxnIds(new Set());
+      alert(res.message || `${selectedTxnIds.size}件を確認しました`);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '一括確認に失敗しました');
+    } finally {
+      setBatchConfirming(false);
     }
   }
 
@@ -528,33 +602,74 @@ export default function AdminPanel() {
                 </div>
               ) : (
                 <div className="space-y-3">
+                  {/* Batch selection header */}
+                  {transactions.some(t => t.status === 'pending') && (
+                    <div className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-lg">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={
+                            transactions.filter(t => t.status === 'pending').length > 0 &&
+                            transactions.filter(t => t.status === 'pending').every(t => selectedTxnIds.has(t.id))
+                          }
+                          onChange={toggleSelectAllPending}
+                          className="w-4 h-4 text-primary-600 rounded"
+                        />
+                        <span className="text-sm text-gray-600">
+                          要確認を全選択 ({transactions.filter(t => t.status === 'pending').length}件)
+                        </span>
+                      </label>
+                      {selectedTxnIds.size > 0 && (
+                        <span className="text-sm text-primary-600">
+                          {selectedTxnIds.size}件選択中
+                        </span>
+                      )}
+                    </div>
+                  )}
+
                   {transactions.map((txn) => (
                     <div
                       key={txn.id}
-                      className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 cursor-pointer"
+                      className={`border rounded-lg p-4 hover:bg-gray-50 cursor-pointer ${
+                        selectedTxnIds.has(txn.id) ? 'border-primary-500 bg-primary-50' : 'border-gray-200'
+                      }`}
                       onClick={() => openTransactionDetail(txn.id)}
                     >
                       <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="font-medium">{txn.vendor || '不明'}</span>
-                            <span className={`text-xs px-2 py-0.5 rounded-full ${
-                              txn.status === 'confirmed'
-                                ? 'bg-green-100 text-green-700'
-                                : 'bg-orange-100 text-orange-700'
-                            }`}>
-                              {txn.status === 'confirmed' ? '確認済' : '要確認'}
-                            </span>
-                            {txn.confidence < 80 && (
-                              <span className="text-xs text-orange-600">
-                                信頼度: {txn.confidence}%
+                        <div className="flex items-start gap-3">
+                          {txn.status === 'pending' && (
+                            <input
+                              type="checkbox"
+                              checked={selectedTxnIds.has(txn.id)}
+                              onChange={(e) => {
+                                e.stopPropagation();
+                                toggleTxnSelection(txn.id);
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                              className="mt-1 w-4 h-4 text-primary-600 rounded"
+                            />
+                          )}
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="font-medium">{txn.vendor || '不明'}</span>
+                              <span className={`text-xs px-2 py-0.5 rounded-full ${
+                                txn.status === 'confirmed'
+                                  ? 'bg-green-100 text-green-700'
+                                  : 'bg-orange-100 text-orange-700'
+                              }`}>
+                                {txn.status === 'confirmed' ? '確認済' : '要確認'}
                               </span>
-                            )}
-                          </div>
-                          <div className="text-sm text-gray-600">
-                            <span>{txn.date}</span>
-                            <span className="mx-2">·</span>
-                            <span>{txn.account_category || '未分類'}</span>
+                              {txn.confidence < 80 && (
+                                <span className="text-xs text-orange-600">
+                                  信頼度: {txn.confidence}%
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-sm text-gray-600">
+                              <span>{txn.date}</span>
+                              <span className="mx-2">·</span>
+                              <span>{txn.account_category || '未分類'}</span>
+                            </div>
                           </div>
                         </div>
                         <div className="text-right flex items-center gap-3">
@@ -583,7 +698,7 @@ export default function AdminPanel() {
             </div>
 
             <div className="p-4 border-t border-gray-200 flex justify-between">
-              <div>
+              <div className="flex gap-2">
                 {selectedCompany.settlement_confirmed === 1 && (
                   <button
                     onClick={() => handleResetSettlement(selectedCompany)}
@@ -591,6 +706,15 @@ export default function AdminPanel() {
                     className="px-4 py-2 bg-orange-100 text-orange-700 rounded-md text-sm hover:bg-orange-200 disabled:opacity-50"
                   >
                     {resettingSettlement ? 'リセット中...' : '決算リセット'}
+                  </button>
+                )}
+                {selectedTxnIds.size > 0 && (
+                  <button
+                    onClick={handleBatchConfirm}
+                    disabled={batchConfirming}
+                    className="px-4 py-2 bg-green-600 text-white rounded-md text-sm disabled:opacity-50"
+                  >
+                    {batchConfirming ? '処理中...' : `選択した${selectedTxnIds.size}件を一括確認`}
                   </button>
                 )}
               </div>
@@ -636,12 +760,20 @@ export default function AdminPanel() {
 
                 <div className="flex-1 overflow-auto p-4 space-y-4">
                   {/* Receipt Image */}
-                  <div className="bg-gray-100 rounded-lg overflow-hidden">
+                  <div
+                    className="bg-gray-100 rounded-lg overflow-hidden cursor-pointer relative group"
+                    onClick={() => setLightboxSrc(getImageUrl(selectedTxn.id))}
+                  >
                     <img
                       src={getImageUrl(selectedTxn.id)}
                       alt="領収書"
                       className="w-full h-auto max-h-64 object-contain"
                     />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                      <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 text-white px-3 py-1 rounded-full text-sm">
+                        クリックで拡大
+                      </span>
+                    </div>
                   </div>
 
                   {/* Transaction Info */}
@@ -760,6 +892,14 @@ export default function AdminPanel() {
         </div>
       )}
 
+      {/* Image Lightbox */}
+      {lightboxSrc && (
+        <ImageLightbox
+          src={lightboxSrc}
+          alt="領収書"
+          onClose={() => setLightboxSrc(null)}
+        />
+      )}
     </div>
   );
 }

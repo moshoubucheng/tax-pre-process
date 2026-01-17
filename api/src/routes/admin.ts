@@ -12,6 +12,9 @@ import {
   getTransactionsByCompany,
   getCompanyDocuments,
   updateCompanyDocuments,
+  getUsersByCompany,
+  getUserById,
+  updateUserPassword,
 } from '../db/queries';
 import { generateYayoiCSV } from '../services/export';
 
@@ -99,7 +102,7 @@ admin.get('/companies/:id', async (c) => {
 admin.get('/companies/:id/transactions', async (c) => {
   try {
     const id = c.req.param('id');
-    const { status, limit, offset } = c.req.query();
+    const { status, limit, offset, search, start_date, end_date, min_amount, max_amount } = c.req.query();
 
     const company = await getCompanyById(c.env.DB, id);
     if (!company) {
@@ -110,6 +113,11 @@ admin.get('/companies/:id/transactions', async (c) => {
       status: status || undefined,
       limit: limit ? parseInt(limit) : 100,
       offset: offset ? parseInt(offset) : 0,
+      search: search || undefined,
+      startDate: start_date || undefined,
+      endDate: end_date || undefined,
+      minAmount: min_amount ? parseInt(min_amount) : undefined,
+      maxAmount: max_amount ? parseInt(max_amount) : undefined,
     });
 
     return c.json({ data: transactions });
@@ -352,6 +360,62 @@ admin.delete('/companies/:id/settlement', async (c) => {
   } catch (error) {
     console.error('Settlement reset error:', error);
     return c.json({ error: 'リセットに失敗しました' }, 500);
+  }
+});
+
+// GET /api/admin/companies/:id/users - Get company users
+admin.get('/companies/:id/users', async (c) => {
+  try {
+    const companyId = c.req.param('id');
+
+    const company = await getCompanyById(c.env.DB, companyId);
+    if (!company) {
+      return c.json({ error: '顧問先が見つかりません' }, 404);
+    }
+
+    const users = await getUsersByCompany(c.env.DB, companyId);
+    return c.json({ data: users });
+  } catch (error) {
+    console.error('Get company users error:', error);
+    return c.json({ error: 'ユーザー一覧の取得に失敗しました' }, 500);
+  }
+});
+
+// PUT /api/admin/users/:id/password - Reset user password (Admin only)
+admin.put('/users/:id/password', async (c) => {
+  try {
+    const userId = c.req.param('id');
+    const body = await c.req.json();
+
+    const { new_password } = body;
+
+    if (!new_password) {
+      return c.json({ error: '新しいパスワードを入力してください' }, 400);
+    }
+
+    if (new_password.length < 8) {
+      return c.json({ error: 'パスワードは8文字以上で入力してください' }, 400);
+    }
+
+    // Verify user exists
+    const user = await getUserById(c.env.DB, userId);
+    if (!user) {
+      return c.json({ error: 'ユーザーが見つかりません' }, 404);
+    }
+
+    // Prevent admin from being reset (security measure)
+    if (user.role === 'admin') {
+      return c.json({ error: '管理者のパスワードはこの方法でリセットできません' }, 403);
+    }
+
+    // Hash and update password
+    const passwordHash = await hashPassword(new_password);
+    await updateUserPassword(c.env.DB, userId, passwordHash);
+
+    return c.json({ message: 'パスワードをリセットしました' });
+  } catch (error) {
+    console.error('Reset user password error:', error);
+    return c.json({ error: 'パスワードのリセットに失敗しました' }, 500);
   }
 });
 

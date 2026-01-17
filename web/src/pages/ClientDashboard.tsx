@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { api } from '../lib/api';
+import ImageLightbox from '../components/ImageLightbox';
 
 interface DashboardStats {
   monthly_total: number;
@@ -89,6 +90,19 @@ export default function ClientDashboard() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  // Search/Filter
+  const [showFilters, setShowFilters] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filters, setFilters] = useState({
+    startDate: '',
+    endDate: '',
+    minAmount: '',
+    maxAmount: '',
+  });
+
+  // Image lightbox
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+
   useEffect(() => {
     loadDashboard();
   }, []);
@@ -112,6 +126,34 @@ export default function ClientDashboard() {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleSearch() {
+    try {
+      const params = new URLSearchParams();
+      if (searchQuery) params.append('search', searchQuery);
+      if (filters.startDate) params.append('start_date', filters.startDate);
+      if (filters.endDate) params.append('end_date', filters.endDate);
+      if (filters.minAmount) params.append('min_amount', filters.minAmount);
+      if (filters.maxAmount) params.append('max_amount', filters.maxAmount);
+
+      const queryString = params.toString();
+      const [pendingRes, confirmedRes] = await Promise.all([
+        api.get<{ data: PendingTransaction[] }>(`/dashboard/pending${queryString ? '?' + queryString : ''}`),
+        api.get<{ data: PendingTransaction[] }>(`/dashboard/confirmed${queryString ? '?' + queryString : ''}`),
+      ]);
+
+      setPendingList(pendingRes.data || []);
+      setConfirmedList(confirmedRes.data || []);
+    } catch (err) {
+      console.error('Search failed:', err);
+    }
+  }
+
+  function clearFilters() {
+    setSearchQuery('');
+    setFilters({ startDate: '', endDate: '', minAmount: '', maxAmount: '' });
+    loadDashboard();
   }
 
   async function openTransactionDetail(id: string) {
@@ -309,6 +351,88 @@ export default function ClientDashboard() {
         </div>
       </div>
 
+      {/* Search/Filter */}
+      <div className="bg-white rounded-lg shadow-sm p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="flex-1 relative">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+              placeholder="店名で検索..."
+              className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-md text-sm"
+            />
+            <svg className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className={`px-3 py-2 border rounded-md text-sm ${showFilters ? 'border-primary-500 text-primary-600 bg-primary-50' : 'border-gray-300 text-gray-600'}`}
+          >
+            絞込
+          </button>
+          <button
+            onClick={handleSearch}
+            className="px-4 py-2 bg-primary-600 text-white rounded-md text-sm"
+          >
+            検索
+          </button>
+        </div>
+
+        {showFilters && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-3 border-t border-gray-200">
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">開始日</label>
+              <input
+                type="date"
+                value={filters.startDate}
+                onChange={(e) => setFilters({ ...filters, startDate: e.target.value })}
+                className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">終了日</label>
+              <input
+                type="date"
+                value={filters.endDate}
+                onChange={(e) => setFilters({ ...filters, endDate: e.target.value })}
+                className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">最小金額</label>
+              <input
+                type="number"
+                value={filters.minAmount}
+                onChange={(e) => setFilters({ ...filters, minAmount: e.target.value })}
+                placeholder="¥0"
+                className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">最大金額</label>
+              <input
+                type="number"
+                value={filters.maxAmount}
+                onChange={(e) => setFilters({ ...filters, maxAmount: e.target.value })}
+                placeholder="¥999999"
+                className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
+              />
+            </div>
+            <div className="col-span-2 md:col-span-4 flex justify-end">
+              <button
+                onClick={clearFilters}
+                className="text-sm text-gray-500 hover:text-gray-700"
+              >
+                フィルターをクリア
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Pending Transactions */}
       <div className="bg-white rounded-lg shadow-sm p-4">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">
@@ -433,12 +557,20 @@ export default function ClientDashboard() {
 
                 <div className="flex-1 overflow-auto p-4 space-y-4">
                   {/* Receipt Image */}
-                  <div className="bg-gray-100 rounded-lg overflow-hidden">
+                  <div
+                    className="bg-gray-100 rounded-lg overflow-hidden cursor-pointer relative group"
+                    onClick={() => setLightboxSrc(getImageUrl(selectedTxn.id))}
+                  >
                     <img
                       src={getImageUrl(selectedTxn.id)}
                       alt="領収書"
                       className="w-full h-auto max-h-64 object-contain"
                     />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                      <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 text-white px-3 py-1 rounded-full text-sm">
+                        クリックで拡大
+                      </span>
+                    </div>
                   </div>
 
                   {/* Edit Form or View Mode */}
@@ -604,6 +736,15 @@ export default function ClientDashboard() {
             ) : null}
           </div>
         </div>
+      )}
+
+      {/* Image Lightbox */}
+      {lightboxSrc && (
+        <ImageLightbox
+          src={lightboxSrc}
+          alt="領収書"
+          onClose={() => setLightboxSrc(null)}
+        />
       )}
     </div>
   );

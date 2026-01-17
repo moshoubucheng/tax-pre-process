@@ -48,6 +48,59 @@ transactions.get('/', async (c) => {
   }
 });
 
+// PUT /api/transactions/batch-confirm - Batch confirm transactions (Admin only)
+// NOTE: This route must be defined before /:id routes to avoid matching issues
+transactions.put('/batch-confirm', async (c) => {
+  try {
+    const user = c.get('user');
+
+    // Only admin can confirm transactions
+    if (user.role !== 'admin') {
+      return c.json({ error: '管理者のみが確認できます' }, 403);
+    }
+
+    const body = await c.req.json();
+    const ids = body.ids as string[];
+
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return c.json({ error: '取引IDを指定してください' }, 400);
+    }
+
+    let confirmedCount = 0;
+    const errors: string[] = [];
+
+    for (const id of ids) {
+      try {
+        const transaction = await getTransactionById(c.env.DB, id);
+
+        if (!transaction) {
+          errors.push(`${id}: 取引が見つかりません`);
+          continue;
+        }
+
+        if (transaction.status === 'confirmed') {
+          // Already confirmed, skip
+          continue;
+        }
+
+        await updateTransaction(c.env.DB, id, { status: 'confirmed' });
+        confirmedCount++;
+      } catch (e) {
+        errors.push(`${id}: 確認に失敗しました`);
+      }
+    }
+
+    return c.json({
+      message: `${confirmedCount}件の取引を確認しました`,
+      confirmed_count: confirmedCount,
+      errors: errors.length > 0 ? errors : undefined,
+    });
+  } catch (error) {
+    console.error('Batch confirm error:', error);
+    return c.json({ error: '一括確認に失敗しました' }, 500);
+  }
+});
+
 // GET /api/transactions/:id - Get single transaction
 transactions.get('/:id', async (c) => {
   try {

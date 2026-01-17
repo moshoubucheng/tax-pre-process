@@ -1,8 +1,8 @@
 import { Hono } from 'hono';
 import type { Env, LoginRequest } from '../types';
 import { signJWT } from '../services/jwt';
-import { verifyPassword } from '../services/password';
-import { getUserByEmail, getUserById } from '../db/queries';
+import { verifyPassword, hashPassword } from '../services/password';
+import { getUserByEmail, getUserById, updateUserPassword } from '../db/queries';
 import { authMiddleware } from '../middleware/auth';
 
 const auth = new Hono<{ Bindings: Env }>();
@@ -79,6 +79,45 @@ auth.get('/me', authMiddleware, async (c) => {
   } catch (error) {
     console.error('Get user error:', error);
     return c.json({ error: 'ユーザー情報の取得に失敗しました' }, 500);
+  }
+});
+
+// PUT /api/auth/password - Change password (self-service)
+auth.put('/password', authMiddleware, async (c) => {
+  try {
+    const payload = c.get('user');
+    const body = await c.req.json();
+
+    const { current_password, new_password } = body;
+
+    if (!current_password || !new_password) {
+      return c.json({ error: '現在のパスワードと新しいパスワードを入力してください' }, 400);
+    }
+
+    if (new_password.length < 8) {
+      return c.json({ error: '新しいパスワードは8文字以上で入力してください' }, 400);
+    }
+
+    // Get user from database
+    const user = await getUserById(c.env.DB, payload.sub);
+    if (!user) {
+      return c.json({ error: 'ユーザーが見つかりません' }, 404);
+    }
+
+    // Verify current password
+    const isValid = await verifyPassword(current_password, user.password_hash);
+    if (!isValid) {
+      return c.json({ error: '現在のパスワードが正しくありません' }, 401);
+    }
+
+    // Hash and update new password
+    const newPasswordHash = await hashPassword(new_password);
+    await updateUserPassword(c.env.DB, payload.sub, newPasswordHash);
+
+    return c.json({ message: 'パスワードを変更しました' });
+  } catch (error) {
+    console.error('Password change error:', error);
+    return c.json({ error: 'パスワード変更に失敗しました' }, 500);
   }
 });
 

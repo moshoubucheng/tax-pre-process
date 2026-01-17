@@ -8,6 +8,7 @@ import AdminReceipts from './pages/AdminReceipts';
 import Chat from './pages/Chat';
 import Documents from './pages/Documents';
 import AdminDocuments from './pages/AdminDocuments';
+import Settings from './pages/Settings';
 import Layout from './components/layout/Layout';
 
 function PrivateRoute({ children, adminOnly = false }: { children: React.ReactNode; adminOnly?: boolean }) {
@@ -75,6 +76,14 @@ function AppRoutes() {
         <PrivateRoute>
           <Layout>
             {user?.role === 'admin' ? <AdminDocuments /> : <Documents />}
+          </Layout>
+        </PrivateRoute>
+      } />
+
+      <Route path="/settings" element={
+        <PrivateRoute>
+          <Layout>
+            <Settings />
           </Layout>
         </PrivateRoute>
       } />

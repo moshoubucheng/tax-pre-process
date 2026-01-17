@@ -76,10 +76,20 @@ dashboard.get('/pending', async (c) => {
       return c.json({ error: '会社情報が見つかりません' }, 400);
     }
 
+    const { search, start_date, end_date, min_amount, max_amount } = c.req.query();
+
     const transactions = await getTransactionsByCompany(
       c.env.DB,
       user.company_id,
-      { status: 'pending', limit: 20 }
+      {
+        status: 'pending',
+        limit: 100,
+        search: search || undefined,
+        startDate: start_date || undefined,
+        endDate: end_date || undefined,
+        minAmount: min_amount ? parseInt(min_amount) : undefined,
+        maxAmount: max_amount ? parseInt(max_amount) : undefined,
+      }
     );
 
     // Return only necessary fields for the pending list
@@ -107,10 +117,20 @@ dashboard.get('/confirmed', async (c) => {
       return c.json({ error: '会社情報が見つかりません' }, 400);
     }
 
+    const { search, start_date, end_date, min_amount, max_amount } = c.req.query();
+
     const transactions = await getTransactionsByCompany(
       c.env.DB,
       user.company_id,
-      { status: 'confirmed', limit: 50 }
+      {
+        status: 'confirmed',
+        limit: 100,
+        search: search || undefined,
+        startDate: start_date || undefined,
+        endDate: end_date || undefined,
+        minAmount: min_amount ? parseInt(min_amount) : undefined,
+        maxAmount: max_amount ? parseInt(max_amount) : undefined,
+      }
     );
 
     // Return only necessary fields for the confirmed list

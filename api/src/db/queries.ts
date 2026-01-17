@@ -29,6 +29,28 @@ export async function createUser(
     .run();
 }
 
+export async function updateUserPassword(
+  db: D1Database,
+  userId: string,
+  passwordHash: string
+): Promise<void> {
+  await db
+    .prepare('UPDATE users SET password_hash = ? WHERE id = ?')
+    .bind(passwordHash, userId)
+    .run();
+}
+
+export async function getUsersByCompany(
+  db: D1Database,
+  companyId: string
+): Promise<Omit<User, 'password_hash'>[]> {
+  const result = await db
+    .prepare('SELECT id, email, name, role, company_id, created_at FROM users WHERE company_id = ?')
+    .bind(companyId)
+    .all<Omit<User, 'password_hash'>>();
+  return result.results;
+}
+
 // Company queries
 export async function getCompanyById(db: D1Database, id: string): Promise<Company | null> {
   const result = await db
@@ -70,7 +92,16 @@ export async function getTransactionById(
 export async function getTransactionsByCompany(
   db: D1Database,
   companyId: string,
-  options: { status?: string; limit?: number; offset?: number } = {}
+  options: {
+    status?: string;
+    limit?: number;
+    offset?: number;
+    search?: string;
+    startDate?: string;
+    endDate?: string;
+    minAmount?: number;
+    maxAmount?: number;
+  } = {}
 ): Promise<Transaction[]> {
   let query = 'SELECT * FROM transactions WHERE company_id = ?';
   const params: (string | number)[] = [companyId];
@@ -80,7 +111,32 @@ export async function getTransactionsByCompany(
     params.push(options.status);
   }
 
-  query += ' ORDER BY created_at DESC';
+  if (options.search) {
+    query += ' AND vendor_name LIKE ?';
+    params.push(`%${options.search}%`);
+  }
+
+  if (options.startDate) {
+    query += ' AND transaction_date >= ?';
+    params.push(options.startDate);
+  }
+
+  if (options.endDate) {
+    query += ' AND transaction_date <= ?';
+    params.push(options.endDate);
+  }
+
+  if (options.minAmount !== undefined) {
+    query += ' AND amount >= ?';
+    params.push(options.minAmount);
+  }
+
+  if (options.maxAmount !== undefined) {
+    query += ' AND amount <= ?';
+    params.push(options.maxAmount);
+  }
+
+  query += ' ORDER BY transaction_date DESC, created_at DESC';
 
   if (options.limit) {
     query += ' LIMIT ?';
