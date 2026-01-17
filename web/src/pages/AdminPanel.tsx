@@ -7,6 +7,9 @@ interface Company {
   pending_count: number;
   confirmed_count: number;
   monthly_total: number;
+  settlement_color: 'normal' | 'yellow' | 'red';
+  business_year_end: string | null;
+  settlement_confirmed: number;
 }
 
 interface Transaction {
@@ -34,18 +37,11 @@ interface TransactionDetail {
   created_at: string;
 }
 
-interface BusinessYearAlert {
-  company_id: string;
-  company_name: string;
-  end_month: number;
-  message: string;
-}
 
 export default function AdminPanel() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState<string | null>(null);
-  const [businessYearAlerts, setBusinessYearAlerts] = useState<BusinessYearAlert[]>([]);
 
   // New company form
   const [showForm, setShowForm] = useState(false);
@@ -62,9 +58,13 @@ export default function AdminPanel() {
   const [selectedTxn, setSelectedTxn] = useState<TransactionDetail | null>(null);
   const [loadingTxnDetail, setLoadingTxnDetail] = useState(false);
 
+  // Settlement confirmation modal
+  const [settlementModal, setSettlementModal] = useState<{ company: Company } | null>(null);
+  const [settlementInput, setSettlementInput] = useState('');
+  const [confirmingSettlement, setConfirmingSettlement] = useState(false);
+
   useEffect(() => {
     loadCompanies();
-    loadBusinessYearAlerts();
   }, []);
 
   async function loadCompanies() {
@@ -78,25 +78,40 @@ export default function AdminPanel() {
     }
   }
 
-  async function loadBusinessYearAlerts() {
-    try {
-      const res = await api.get<{ alerts: BusinessYearAlert[] }>('/admin/business-year-alerts');
-      setBusinessYearAlerts(res.alerts || []);
-    } catch (err) {
-      console.error('Failed to load business year alerts:', err);
-    }
+  function openSettlementModal(company: Company) {
+    setSettlementModal({ company });
+    setSettlementInput('');
   }
 
-  async function handleConfirmSettlement(companyId: string, companyName: string) {
-    if (!confirm(`${companyName}の決算完了を確認しますか？`)) return;
+  function closeSettlementModal() {
+    setSettlementModal(null);
+    setSettlementInput('');
+  }
 
+  async function handleConfirmSettlement() {
+    if (!settlementModal) return;
+
+    const expectedInput = `${settlementModal.company.name}決算完了`;
+    if (settlementInput !== expectedInput) {
+      alert(`「${expectedInput}」と入力してください`);
+      return;
+    }
+
+    setConfirmingSettlement(true);
     try {
-      await api.put(`/admin/companies/${companyId}/settlement`, {});
-      // Remove from alerts
-      setBusinessYearAlerts(businessYearAlerts.filter(a => a.company_id !== companyId));
+      await api.put(`/admin/companies/${settlementModal.company.id}/settlement`, {});
+      // Update company in list
+      setCompanies(companies.map(c =>
+        c.id === settlementModal.company.id
+          ? { ...c, settlement_color: 'normal' as const, settlement_confirmed: 1 }
+          : c
+      ));
+      closeSettlementModal();
       alert('決算確認完了しました');
     } catch (err) {
       alert(err instanceof Error ? err.message : '決算確認に失敗しました');
+    } finally {
+      setConfirmingSettlement(false);
     }
   }
 
@@ -234,35 +249,20 @@ export default function AdminPanel() {
     );
   }
 
+  // Helper function to get company name style based on settlement color
+  function getCompanyNameStyle(color: 'normal' | 'yellow' | 'red') {
+    switch (color) {
+      case 'yellow':
+        return 'text-yellow-600 font-semibold';
+      case 'red':
+        return 'text-red-600 font-bold';
+      default:
+        return 'text-primary-600';
+    }
+  }
+
   return (
     <div className="space-y-6">
-      {/* Business Year Alerts */}
-      {businessYearAlerts.length > 0 && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <div className="flex items-start gap-3">
-            <svg className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-            <div className="flex-1">
-              <h3 className="font-semibold text-red-800">事業年度終了のお知らせ</h3>
-              <div className="mt-2 space-y-2">
-                {businessYearAlerts.map((alert) => (
-                  <div key={alert.company_id} className="flex items-center justify-between">
-                    <span className="text-red-700 text-sm">{alert.message}</span>
-                    <button
-                      onClick={() => handleConfirmSettlement(alert.company_id, alert.company_name)}
-                      className="px-3 py-1 bg-green-600 text-white text-xs rounded-md hover:bg-green-700"
-                    >
-                      決算完了
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-gray-900">顧問先管理</h1>
         <button
@@ -375,13 +375,27 @@ export default function AdminPanel() {
             <tbody className="divide-y divide-gray-200">
               {companies.map((company) => (
                 <tr key={company.id}>
-                  <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">
-                    <button
-                      onClick={() => openCompanyDetail(company)}
-                      className="text-primary-600 hover:text-primary-800 hover:underline"
-                    >
-                      {company.name}
-                    </button>
+                  <td className="px-6 py-4 whitespace-nowrap font-medium">
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => openCompanyDetail(company)}
+                        className={`${getCompanyNameStyle(company.settlement_color)} hover:underline`}
+                      >
+                        {company.name}
+                      </button>
+                      {company.settlement_color !== 'normal' && (
+                        <button
+                          onClick={() => openSettlementModal(company)}
+                          className={`px-2 py-0.5 text-xs rounded ${
+                            company.settlement_color === 'red'
+                              ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                              : 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
+                          }`}
+                        >
+                          決算確認
+                        </button>
+                      )}
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-gray-600">
                     ¥{company.monthly_total.toLocaleString()}
@@ -412,12 +426,26 @@ export default function AdminPanel() {
           {companies.map((company) => (
             <div key={company.id} className="p-4">
               <div className="flex items-center justify-between mb-2">
-                <button
-                  onClick={() => openCompanyDetail(company)}
-                  className="font-medium text-primary-600 hover:underline"
-                >
-                  {company.name}
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => openCompanyDetail(company)}
+                    className={`font-medium ${getCompanyNameStyle(company.settlement_color)} hover:underline`}
+                  >
+                    {company.name}
+                  </button>
+                  {company.settlement_color !== 'normal' && (
+                    <button
+                      onClick={() => openSettlementModal(company)}
+                      className={`px-2 py-0.5 text-xs rounded ${
+                        company.settlement_color === 'red'
+                          ? 'bg-red-100 text-red-700'
+                          : 'bg-yellow-100 text-yellow-700'
+                      }`}
+                    >
+                      決算
+                    </button>
+                  )}
+                </div>
                 <span className="text-gray-600">¥{company.monthly_total.toLocaleString()}</span>
               </div>
               <div className="flex items-center justify-between text-sm">
@@ -651,6 +679,46 @@ export default function AdminPanel() {
                 </div>
               </>
             ) : null}
+          </div>
+        </div>
+      )}
+
+      {/* Settlement Confirmation Modal */}
+      {settlementModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[70]">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <h2 className="text-lg font-semibold mb-4">決算完了確認</h2>
+            <p className="text-gray-600 mb-4">
+              <span className={settlementModal.company.settlement_color === 'red' ? 'text-red-600 font-bold' : 'text-yellow-600 font-semibold'}>
+                {settlementModal.company.name}
+              </span>
+              の決算を完了するには、以下を入力してください：
+            </p>
+            <p className="text-sm text-gray-500 mb-2">
+              「<span className="font-medium text-gray-900">{settlementModal.company.name}決算完了</span>」と入力
+            </p>
+            <input
+              type="text"
+              value={settlementInput}
+              onChange={(e) => setSettlementInput(e.target.value)}
+              placeholder={`${settlementModal.company.name}決算完了`}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md mb-4"
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={closeSettlementModal}
+                className="flex-1 py-2 border border-gray-300 rounded-md"
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={handleConfirmSettlement}
+                disabled={confirmingSettlement}
+                className="flex-1 py-2 bg-green-600 text-white rounded-md disabled:opacity-50"
+              >
+                {confirmingSettlement ? '処理中...' : '確認完了'}
+              </button>
+            </div>
           </div>
         </div>
       )}

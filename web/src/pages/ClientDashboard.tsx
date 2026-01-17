@@ -11,6 +11,7 @@ interface DashboardStats {
 
 interface BusinessYearAlert {
   alert: boolean;
+  color?: 'yellow' | 'red';
   message?: string;
   company_name?: string;
   end_month?: number;
@@ -118,13 +119,25 @@ export default function ClientDashboard() {
     <div className="space-y-6">
       {/* Business Year Alert */}
       {businessYearAlert?.alert && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
-          <svg className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className={`rounded-lg p-4 flex items-start gap-3 ${
+          businessYearAlert.color === 'red'
+            ? 'bg-red-50 border border-red-200'
+            : 'bg-yellow-50 border border-yellow-200'
+        }`}>
+          <svg className={`w-6 h-6 flex-shrink-0 mt-0.5 ${
+            businessYearAlert.color === 'red' ? 'text-red-600' : 'text-yellow-600'
+          }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
           <div>
-            <h3 className="font-semibold text-red-800">事業年度終了のお知らせ</h3>
-            <p className="text-red-700 text-sm mt-1">{businessYearAlert.message}</p>
+            <h3 className={`font-semibold ${
+              businessYearAlert.color === 'red' ? 'text-red-800' : 'text-yellow-800'
+            }`}>
+              {businessYearAlert.color === 'red' ? '事業年度終了 - 至急対応' : '事業年度終了のお知らせ'}
+            </h3>
+            <p className={`text-sm mt-1 ${
+              businessYearAlert.color === 'red' ? 'text-red-700' : 'text-yellow-700'
+            }`}>{businessYearAlert.message}</p>
           </div>
         </div>
       )}

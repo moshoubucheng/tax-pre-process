@@ -25,7 +25,53 @@ admin.use('*', adminOnly);
 admin.get('/companies', async (c) => {
   try {
     const companies = await getCompaniesWithStats(c.env.DB);
-    return c.json({ data: companies });
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1;
+    const currentDay = now.getDate();
+
+    // Enrich companies with settlement status
+    const enrichedCompanies = await Promise.all(
+      companies.map(async (company) => {
+        const docs = await getCompanyDocuments(c.env.DB, company.id);
+        let settlementColor: 'normal' | 'yellow' | 'red' = 'normal';
+
+        if (docs && docs.business_year_end && docs.settlement_confirmed !== 1) {
+          const endMonth = parseInt(docs.business_year_end);
+          // Calculate months since business year ended
+          let monthsSinceEnd = 0;
+
+          if (currentMonth === endMonth && currentDay >= 15) {
+            // First month (from 15th of ending month)
+            monthsSinceEnd = 1;
+          } else if (currentMonth > endMonth || (currentMonth < endMonth && currentMonth + 12 - endMonth <= 2)) {
+            // After the ending month
+            if (currentMonth > endMonth) {
+              monthsSinceEnd = currentMonth - endMonth;
+            } else {
+              // Wrapped around year (e.g., end month is December, current is January)
+              monthsSinceEnd = currentMonth + 12 - endMonth;
+            }
+            // Only count if within 2-month settlement period
+            if (monthsSinceEnd > 2) monthsSinceEnd = 0;
+          }
+
+          if (monthsSinceEnd === 1) {
+            settlementColor = 'yellow';
+          } else if (monthsSinceEnd >= 2) {
+            settlementColor = 'red';
+          }
+        }
+
+        return {
+          ...company,
+          settlement_color: settlementColor,
+          business_year_end: docs?.business_year_end || null,
+          settlement_confirmed: docs?.settlement_confirmed || 0,
+        };
+      })
+    );
+
+    return c.json({ data: enrichedCompanies });
   } catch (error) {
     console.error('List companies error:', error);
     return c.json({ error: '顧問先一覧の取得に失敗しました' }, 500);

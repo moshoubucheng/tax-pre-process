@@ -153,14 +153,38 @@ dashboard.get('/business-year-alert', async (c) => {
     const currentDay = now.getDate();
     const endMonth = parseInt(docs.business_year_end);
 
-    // Show alert from the 15th of the ending month until settlement is confirmed
-    const shouldAlert = currentMonth === endMonth && currentDay >= 15;
+    // Calculate months since business year ended
+    let monthsSinceEnd = 0;
+    let alertColor: 'yellow' | 'red' | null = null;
 
-    if (shouldAlert) {
+    if (currentMonth === endMonth && currentDay >= 15) {
+      // First month (from 15th of ending month)
+      monthsSinceEnd = 1;
+      alertColor = 'yellow';
+    } else if (currentMonth > endMonth || (currentMonth < endMonth && currentMonth + 12 - endMonth <= 2)) {
+      // After the ending month
+      if (currentMonth > endMonth) {
+        monthsSinceEnd = currentMonth - endMonth;
+      } else {
+        // Wrapped around year (e.g., end month is December, current is January)
+        monthsSinceEnd = currentMonth + 12 - endMonth;
+      }
+      // Only count if within 2-month settlement period
+      if (monthsSinceEnd <= 2) {
+        alertColor = monthsSinceEnd === 1 ? 'yellow' : 'red';
+      }
+    }
+
+    if (alertColor) {
       const company = await getCompanyById(c.env.DB, user.company_id);
+      const message = alertColor === 'yellow'
+        ? '事業年度が今月末で終了します。決算の準備をお願いします。'
+        : '事業年度が終了しました。至急、決算の準備をお願いします。';
+
       return c.json({
         alert: true,
-        message: `事業年度が今月末で終了します。決算の準備をお願いします。`,
+        color: alertColor,
+        message,
         company_name: company?.name || '',
         end_month: endMonth,
       });
