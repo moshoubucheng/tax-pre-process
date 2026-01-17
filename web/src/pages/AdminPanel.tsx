@@ -92,9 +92,12 @@ export default function AdminPanel() {
   async function handleConfirmSettlement() {
     if (!settlementModal) return;
 
-    const expectedInput = `${settlementModal.company.name}決算完了`;
-    if (settlementInput !== expectedInput) {
-      alert(`「${expectedInput}」と入力してください`);
+    const companyName = settlementModal.company.name.trim();
+    const expectedInput = `${companyName}決算完了`;
+    const userInput = settlementInput.trim();
+
+    if (userInput !== expectedInput) {
+      alert(`入力が一致しません。\n\n入力内容: 「${userInput}」\n期待内容: 「${expectedInput}」`);
       return;
     }
 
@@ -724,18 +727,29 @@ export default function AdminPanel() {
             <h2 className="text-lg font-semibold mb-4">決算完了確認</h2>
             <p className="text-gray-600 mb-4">
               <span className={settlementModal.company.settlement_color === 'red' ? 'text-red-600 font-bold' : 'text-yellow-600 font-semibold'}>
-                {settlementModal.company.name}
+                {settlementModal.company.name.trim()}
               </span>
               の決算を完了するには、以下を入力してください：
             </p>
-            <p className="text-sm text-gray-500 mb-2">
-              「<span className="font-medium text-gray-900">{settlementModal.company.name}決算完了</span>」と入力
-            </p>
+            <div className="flex items-center gap-2 mb-2">
+              <p className="text-sm text-gray-500">
+                「<span className="font-medium text-gray-900">{settlementModal.company.name.trim()}決算完了</span>」と入力
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setSettlementInput(`${settlementModal.company.name.trim()}決算完了`);
+                }}
+                className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded hover:bg-gray-200"
+              >
+                自動入力
+              </button>
+            </div>
             <input
               type="text"
               value={settlementInput}
               onChange={(e) => setSettlementInput(e.target.value)}
-              placeholder={`${settlementModal.company.name}決算完了`}
+              placeholder={`${settlementModal.company.name.trim()}決算完了`}
               className="w-full px-3 py-2 border border-gray-300 rounded-md mb-4"
             />
             <div className="flex gap-2">
