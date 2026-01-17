@@ -11,7 +11,7 @@ export default function MobileNav() {
   const navItems = [
     { path: '/', label: 'ホーム', icon: HomeIcon },
     { path: '/upload', label: '領収書', icon: UploadIcon },
-    { path: '/documents', label: '書類', icon: DocumentIcon },
+    { path: '/documents', label: '基礎資料', icon: DocumentIcon },
     { path: '/chat', label: 'AI相談', icon: ChatIcon },
   ];
 

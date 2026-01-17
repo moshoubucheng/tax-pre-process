@@ -11,7 +11,7 @@ export default function Header() {
   const navItems = [
     { path: '/', label: 'ホーム' },
     { path: '/upload', label: '領収書' },
-    { path: '/documents', label: '書類' },
+    { path: '/documents', label: '基礎資料' },
     { path: '/chat', label: 'AI相談' },
   ];
 

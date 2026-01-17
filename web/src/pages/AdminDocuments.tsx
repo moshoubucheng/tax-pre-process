@@ -23,6 +23,8 @@ interface CompanyDocuments {
   kousei_nenkin: string | null;
   kokuzei_info: string | null;
   chihouzei_info: string | null;
+  business_year_start: string | null;
+  business_year_end: string | null;
   status: 'draft' | 'submitted' | 'confirmed';
   confirmed_at: string | null;
 }
@@ -57,6 +59,8 @@ export default function AdminDocuments() {
     kousei_nenkin: '',
     kokuzei_info: '',
     chihouzei_info: '',
+    business_year_start: '',
+    business_year_end: '',
   });
 
   // Status actions
@@ -96,6 +100,8 @@ export default function AdminDocuments() {
           kousei_nenkin: res.data.kousei_nenkin || '',
           kokuzei_info: res.data.kokuzei_info || '',
           chihouzei_info: res.data.chihouzei_info || '',
+          business_year_start: res.data.business_year_start || '',
+          business_year_end: res.data.business_year_end || '',
         });
       }
     } catch (err) {
@@ -207,7 +213,7 @@ export default function AdminDocuments() {
           </div>
         ) : !companyDocs ? (
           <div className="bg-white rounded-lg shadow-sm p-8 text-center text-gray-500">
-            書類がまだ登録されていません
+            基礎資料がまだ登録されていません
           </div>
         ) : (
           <>
@@ -246,6 +252,48 @@ export default function AdminDocuments() {
                   );
                 })}
               </div>
+            </div>
+
+            {/* Business Year */}
+            <div className="bg-white rounded-lg shadow-sm p-4 space-y-4">
+              <h2 className="font-semibold text-gray-900">事業年度</h2>
+              {editing ? (
+                <div>
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={formData.business_year_start}
+                      onChange={(e) => setFormData({ ...formData, business_year_start: e.target.value })}
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md"
+                    >
+                      <option value="">月を選択</option>
+                      {[...Array(12)].map((_, i) => (
+                        <option key={i + 1} value={String(i + 1)}>{i + 1}月</option>
+                      ))}
+                    </select>
+                    <span className="text-gray-500">から</span>
+                    <select
+                      value={formData.business_year_end}
+                      onChange={(e) => setFormData({ ...formData, business_year_end: e.target.value })}
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md"
+                    >
+                      <option value="">月を選択</option>
+                      {[...Array(12)].map((_, i) => (
+                        <option key={i + 1} value={String(i + 1)}>{i + 1}月</option>
+                      ))}
+                    </select>
+                    <span className="text-gray-500">まで</span>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-2">例: 4月から翌年3月まで</p>
+                </div>
+              ) : (
+                <div className="text-sm">
+                  {companyDocs.business_year_start && companyDocs.business_year_end ? (
+                    <span className="font-medium">{companyDocs.business_year_start}月 〜 {companyDocs.business_year_end}月</span>
+                  ) : (
+                    <span className="text-gray-400">未設定</span>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Text Information */}
@@ -437,7 +485,7 @@ export default function AdminDocuments() {
   // Company list view
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-bold text-gray-900">会社書類管理</h1>
+      <h1 className="text-xl font-bold text-gray-900">基礎資料管理</h1>
 
       <div className="bg-white rounded-lg shadow-sm overflow-hidden">
         {companies.length === 0 ? (

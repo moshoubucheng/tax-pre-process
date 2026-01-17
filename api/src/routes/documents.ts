@@ -71,7 +71,6 @@ documents.put('/', async (c) => {
     await updateCompanyDocuments(c.env.DB, user.company_id, {
       shacho_phone: body.shacho_phone,
       shacho_name_reading: body.shacho_name_reading,
-      kazoku_name_reading: body.kazoku_name_reading,
       kazoku_info: body.kazoku_info,
       shacho_income: body.shacho_income,
       kazoku_income: body.kazoku_income,
@@ -79,6 +78,8 @@ documents.put('/', async (c) => {
       kousei_nenkin: body.kousei_nenkin,
       kokuzei_info: body.kokuzei_info,
       chihouzei_info: body.chihouzei_info,
+      business_year_start: body.business_year_start,
+      business_year_end: body.business_year_end,
     });
 
     const updated = await getCompanyDocuments(c.env.DB, user.company_id);

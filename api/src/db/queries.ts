@@ -340,11 +340,11 @@ export async function updateCompanyDocuments(
   // Build dynamic update query
   const allowedFields = [
     'tohon_key', 'teikan_key', 'zairyu_card_key', 'juminhyo_key',
-    'kaigyo_doc1_key', 'kaigyo_doc2_key', 'kaigyo_doc3_key',
-    'kaigyo_doc4_key', 'kaigyo_doc5_key', 'kaigyo_doc6_key',
-    'shacho_phone', 'shacho_name_reading', 'kazoku_name_reading',
+    'kaigyo_doc_key',
+    'shacho_phone', 'shacho_name_reading',
     'kazoku_info', 'shacho_income', 'kazoku_income', 'salary_start_date',
     'kousei_nenkin', 'kokuzei_info', 'chihouzei_info',
+    'business_year_start', 'business_year_end',
     'status', 'confirmed_by', 'confirmed_at'
   ];
 

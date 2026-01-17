@@ -159,6 +159,8 @@ admin.put('/documents/:companyId', async (c) => {
       kousei_nenkin: body.kousei_nenkin,
       kokuzei_info: body.kokuzei_info,
       chihouzei_info: body.chihouzei_info,
+      business_year_start: body.business_year_start,
+      business_year_end: body.business_year_end,
     });
 
     const updated = await getCompanyDocuments(c.env.DB, companyId);

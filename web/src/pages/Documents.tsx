@@ -8,15 +8,9 @@ interface CompanyDocuments {
   teikan_key: string | null;
   zairyu_card_key: string | null;
   juminhyo_key: string | null;
-  kaigyo_doc1_key: string | null;
-  kaigyo_doc2_key: string | null;
-  kaigyo_doc3_key: string | null;
-  kaigyo_doc4_key: string | null;
-  kaigyo_doc5_key: string | null;
-  kaigyo_doc6_key: string | null;
+  kaigyo_doc_key: string | null;
   shacho_phone: string | null;
   shacho_name_reading: string | null;
-  kazoku_name_reading: string | null;
   kazoku_info: string | null;
   shacho_income: string | null;
   kazoku_income: string | null;
@@ -24,16 +18,18 @@ interface CompanyDocuments {
   kousei_nenkin: string | null;
   kokuzei_info: string | null;
   chihouzei_info: string | null;
+  business_year_start: string | null;
+  business_year_end: string | null;
   status: 'draft' | 'submitted' | 'confirmed';
   confirmed_at: string | null;
 }
 
 const PDF_FIELDS = [
-  { key: 'tohon', label: '謄本', required: true },
-  { key: 'teikan', label: '定款', required: true },
-  { key: 'zairyu_card', label: '社長・家族在留カード', required: true },
-  { key: 'juminhyo', label: '住民票（マイナンバー記載）', required: true },
-  { key: 'kaigyo_doc', label: '開業届出書類', required: false },
+  { key: 'tohon', label: '謄本' },
+  { key: 'teikan', label: '定款' },
+  { key: 'zairyu_card', label: '社長・家族在留カード' },
+  { key: 'juminhyo', label: '住民票（マイナンバー記載）' },
+  { key: 'kaigyo_doc', label: '開業届出書類' },
 ] as const;
 
 export default function Documents() {
@@ -54,6 +50,8 @@ export default function Documents() {
     kousei_nenkin: '',
     kokuzei_info: '',
     chihouzei_info: '',
+    business_year_start: '',
+    business_year_end: '',
   });
 
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
@@ -77,6 +75,8 @@ export default function Documents() {
           kousei_nenkin: res.data.kousei_nenkin || '',
           kokuzei_info: res.data.kokuzei_info || '',
           chihouzei_info: res.data.chihouzei_info || '',
+          business_year_start: res.data.business_year_start || '',
+          business_year_end: res.data.business_year_end || '',
         });
       }
     } catch (err) {
@@ -170,7 +170,7 @@ export default function Documents() {
   return (
     <div className="space-y-6 pb-24">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-gray-900">会社書類</h1>
+        <h1 className="text-xl font-bold text-gray-900">基礎資料</h1>
         <div className="flex items-center gap-2">
           {docs?.status === 'draft' && (
             <span className="text-sm px-2 py-1 bg-gray-100 text-gray-600 rounded">下書き</span>
@@ -204,7 +204,6 @@ export default function Documents() {
                 <div className="flex-1">
                   <span className="text-sm font-medium text-gray-900">
                     {field.label}
-                    {field.required && <span className="text-red-500 ml-1">*</span>}
                   </span>
                   {hasFile && (
                     <a
@@ -245,6 +244,40 @@ export default function Documents() {
               </div>
             );
           })}
+        </div>
+      </div>
+
+      {/* Business Year */}
+      <div className="bg-white rounded-lg shadow-sm p-4 space-y-4">
+        <h2 className="font-semibold text-gray-900">事業年度</h2>
+        <div>
+          <div className="flex items-center gap-2">
+            <select
+              value={formData.business_year_start}
+              onChange={(e) => setFormData({ ...formData, business_year_start: e.target.value })}
+              disabled={isLocked}
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-md disabled:bg-gray-100"
+            >
+              <option value="">月を選択</option>
+              {[...Array(12)].map((_, i) => (
+                <option key={i + 1} value={String(i + 1)}>{i + 1}月</option>
+              ))}
+            </select>
+            <span className="text-gray-500">から</span>
+            <select
+              value={formData.business_year_end}
+              onChange={(e) => setFormData({ ...formData, business_year_end: e.target.value })}
+              disabled={isLocked}
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-md disabled:bg-gray-100"
+            >
+              <option value="">月を選択</option>
+              {[...Array(12)].map((_, i) => (
+                <option key={i + 1} value={String(i + 1)}>{i + 1}月</option>
+              ))}
+            </select>
+            <span className="text-gray-500">まで</span>
+          </div>
+          <p className="text-xs text-gray-400 mt-2">例: 4月から翌年3月まで（決算月の翌月から12ヶ月間）</p>
         </div>
       </div>
 
