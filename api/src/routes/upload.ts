@@ -125,6 +125,52 @@ upload.post('/', async (c) => {
   }
 });
 
+// POST /api/upload/manual - Create transaction manually without image
+upload.post('/manual', async (c) => {
+  try {
+    const user = c.get('user');
+
+    if (!user.company_id) {
+      return c.json({ error: '会社情報が見つかりません' }, 400);
+    }
+
+    const body = await c.req.json();
+
+    // Validate required fields
+    if (!body.transaction_date || !body.amount) {
+      return c.json({ error: '日付と金額は必須です' }, 400);
+    }
+
+    const timestamp = new Date().toISOString();
+    const transactionId = generateId('txn');
+
+    await createTransaction(c.env.DB, {
+      id: transactionId,
+      company_id: user.company_id,
+      uploaded_by: user.sub,
+      image_key: '', // No image for manual input
+      image_uploaded_at: timestamp,
+      transaction_date: body.transaction_date,
+      amount: parseInt(body.amount) || 0,
+      vendor_name: body.vendor_name || null,
+      account_debit: body.account_debit || null,
+      account_credit: body.account_credit || '現金',
+      tax_category: body.tax_category || null,
+      ai_confidence: null, // No AI for manual input
+      ai_raw_response: null,
+      status: 'pending',
+    });
+
+    return c.json({
+      transaction_id: transactionId,
+      message: '手動入力で保存しました',
+    });
+  } catch (error) {
+    console.error('Manual input error:', error);
+    return c.json({ error: '保存に失敗しました' }, 500);
+  }
+});
+
 // GET /api/upload/image/:key - Get image from R2
 upload.get('/image/*', async (c) => {
   try {

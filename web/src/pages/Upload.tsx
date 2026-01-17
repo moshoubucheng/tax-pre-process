@@ -36,12 +36,16 @@ const TAX_OPTIONS = [
   '対象外',
 ];
 
+type InputMode = 'ai' | 'manual';
+
 export default function Upload() {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [mode, setMode] = useState<InputMode>('ai');
   const [preview, setPreview] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [aiResult, setAiResult] = useState<AIResult | null>(null);
   const [transactionId, setTransactionId] = useState<string | null>(null);
 
@@ -118,6 +122,27 @@ export default function Upload() {
     });
   }
 
+  async function handleManualSave() {
+    if (!formData.transaction_date || !formData.amount) {
+      alert('日付と金額は必須です');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await api.post('/upload/manual', {
+        ...formData,
+        amount: parseInt(formData.amount) || 0,
+      });
+      alert('保存しました');
+      navigate('/');
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '保存に失敗しました');
+    } finally {
+      setSaving(false);
+    }
+  }
+
   const isLowConfidence = (field: keyof AIResult) => {
     if (!aiResult) return false;
     return aiResult.confidence < 70 && aiResult[field] !== null;
@@ -125,10 +150,36 @@ export default function Upload() {
 
   return (
     <div className="max-w-lg mx-auto space-y-6">
-      <h1 className="text-xl font-bold text-gray-900">領収書アップロード</h1>
+      <h1 className="text-xl font-bold text-gray-900">領収書登録</h1>
 
-      {/* File Selection */}
+      {/* Mode Tabs */}
       {!aiResult && (
+        <div className="flex bg-gray-100 rounded-lg p-1">
+          <button
+            onClick={() => { setMode('ai'); resetForm(); }}
+            className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
+              mode === 'ai'
+                ? 'bg-white text-primary-600 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            AI識別
+          </button>
+          <button
+            onClick={() => { setMode('manual'); resetForm(); }}
+            className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
+              mode === 'manual'
+                ? 'bg-white text-primary-600 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            手動入力
+          </button>
+        </div>
+      )}
+
+      {/* AI Mode - File Selection */}
+      {mode === 'ai' && !aiResult && (
         <div className="bg-white rounded-lg shadow-sm p-4">
           <input
             ref={fileInputRef}
@@ -193,6 +244,99 @@ export default function Upload() {
               </div>
             </button>
           )}
+        </div>
+      )}
+
+      {/* Manual Mode - Input Form */}
+      {mode === 'manual' && (
+        <div className="bg-white rounded-lg shadow-sm p-4 space-y-4">
+          <h2 className="font-semibold text-gray-900">手動入力</h2>
+
+          <div className="space-y-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                日付 <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="date"
+                value={formData.transaction_date}
+                onChange={(e) => setFormData({ ...formData, transaction_date: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                金額 <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="number"
+                value={formData.amount}
+                onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                placeholder="¥"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                店名/取引先
+              </label>
+              <input
+                type="text"
+                value={formData.vendor_name}
+                onChange={(e) => setFormData({ ...formData, vendor_name: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                勘定科目
+              </label>
+              <select
+                value={formData.account_debit}
+                onChange={(e) => setFormData({ ...formData, account_debit: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              >
+                <option value="">選択してください</option>
+                {ACCOUNT_OPTIONS.map((opt) => (
+                  <option key={opt} value={opt}>{opt}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                税区分
+              </label>
+              <select
+                value={formData.tax_category}
+                onChange={(e) => setFormData({ ...formData, tax_category: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              >
+                {TAX_OPTIONS.map((opt) => (
+                  <option key={opt} value={opt}>{opt}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="flex gap-2 pt-2">
+            <button
+              onClick={resetForm}
+              className="flex-1 py-2 border border-gray-300 rounded-md text-gray-700"
+            >
+              クリア
+            </button>
+            <button
+              onClick={handleManualSave}
+              disabled={saving}
+              className="flex-1 py-2 bg-primary-600 text-white rounded-md disabled:opacity-50"
+            >
+              {saving ? '保存中...' : '保存'}
+            </button>
+          </div>
         </div>
       )}
 
