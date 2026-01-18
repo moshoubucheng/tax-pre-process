@@ -64,7 +64,12 @@ export default function Header() {
             </>
           ) : (
             <>
-              <h1 className="text-xl font-bold text-primary-600">Tax Pre-Process</h1>
+              <button
+                onClick={() => navigate('/')}
+                className="text-xl font-bold text-primary-600 hover:text-primary-700"
+              >
+                Tax Pre-Process
+              </button>
               {isAdmin && (
                 <span className="text-xs bg-primary-100 text-primary-700 px-2 py-1 rounded-full">
                   管理者

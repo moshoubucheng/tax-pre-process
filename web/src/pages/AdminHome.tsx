@@ -53,7 +53,6 @@ export default function AdminHome() {
   // Stats
   const totalPending = companies.reduce((sum, c) => sum + c.pending_count, 0);
   const totalConfirmed = companies.reduce((sum, c) => sum + c.confirmed_count, 0);
-  const totalAmount = companies.reduce((sum, c) => sum + c.monthly_total, 0);
 
   if (loading) {
     return (
@@ -82,8 +81,10 @@ export default function AdminHome() {
           <p className="text-2xl font-bold text-green-600">{totalConfirmed}</p>
         </div>
         <div className="bg-white rounded-lg shadow-sm p-4">
-          <p className="text-sm text-gray-500">今月合計</p>
-          <p className="text-2xl font-bold text-gray-900">¥{totalAmount.toLocaleString()}</p>
+          <p className="text-sm text-gray-500">決算アラート</p>
+          <p className={`text-2xl font-bold ${redAlerts.length + yellowAlerts.length > 0 ? 'text-red-600' : 'text-gray-900'}`}>
+            {redAlerts.length + yellowAlerts.length}
+          </p>
         </div>
       </div>
 
