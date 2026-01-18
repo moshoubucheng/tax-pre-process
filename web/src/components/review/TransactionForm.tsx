@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useImperativeHandle, forwardRef } from 'react';
 import { ACCOUNT_DEBIT_OPTIONS, TAX_CATEGORY_OPTIONS } from '../../constants/accounts';
 
 export interface TransactionFormData {
@@ -7,6 +7,10 @@ export interface TransactionFormData {
   vendor_name: string | null;
   account_debit: string | null;
   tax_category: string | null;
+}
+
+export interface TransactionFormRef {
+  confirmWithSave: () => void;
 }
 
 interface TransactionFormProps {
@@ -21,7 +25,7 @@ interface TransactionFormProps {
   onHold?: () => void;
 }
 
-export default function TransactionForm({
+const TransactionForm = forwardRef<TransactionFormRef, TransactionFormProps>(({
   data,
   aiConfidence,
   lowConfidenceFields = [],
@@ -31,7 +35,7 @@ export default function TransactionForm({
   onConfirm,
   onRevert,
   onHold,
-}: TransactionFormProps) {
+}, ref) => {
   const [formData, setFormData] = useState<TransactionFormData>(data);
   const [hasChanges, setHasChanges] = useState(false);
 
@@ -50,6 +54,19 @@ export default function TransactionForm({
     onSave(formData);
     setHasChanges(false);
   }
+
+  function handleConfirmWithSave() {
+    if (hasChanges) {
+      onSave(formData);
+      setHasChanges(false);
+    }
+    onConfirm();
+  }
+
+  // Expose confirmWithSave to parent via ref
+  useImperativeHandle(ref, () => ({
+    confirmWithSave: handleConfirmWithSave,
+  }));
 
   function isLowConfidence(field: string): boolean {
     // If overall confidence is low, mark all AI-filled fields
@@ -203,15 +220,15 @@ export default function TransactionForm({
             disabled={saving || !hasChanges}
             className="flex-1 py-2 px-4 bg-gray-600 text-white rounded-md disabled:opacity-50 hover:bg-gray-700 text-sm"
           >
-            {saving ? '保存中...' : '保存 (Ctrl+S)'}
+            {saving ? '保存中...' : '保存'}
           </button>
           {status === 'pending' && (
             <button
-              onClick={onConfirm}
+              onClick={handleConfirmWithSave}
               disabled={saving}
               className="flex-1 py-2 px-4 bg-green-600 text-white rounded-md disabled:opacity-50 hover:bg-green-700 text-sm"
             >
-              確認→ (Enter)
+              確認 (→)
             </button>
           )}
           {status === 'confirmed' && onRevert && (
@@ -249,4 +266,6 @@ export default function TransactionForm({
       </div>
     </div>
   );
-}
+});
+
+export default TransactionForm;

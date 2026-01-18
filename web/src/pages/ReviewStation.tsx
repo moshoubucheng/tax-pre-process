@@ -1,9 +1,9 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import { useKeyboardShortcuts, REVIEW_SHORTCUTS } from '../hooks/useKeyboardShortcuts';
 import ImagePanel from '../components/review/ImagePanel';
-import TransactionForm, { TransactionFormData } from '../components/review/TransactionForm';
+import TransactionForm, { TransactionFormData, TransactionFormRef } from '../components/review/TransactionForm';
 import ConfidenceGroup, { TransactionItem } from '../components/review/ConfidenceGroup';
 import ConfirmRevertModal from '../components/ConfirmRevertModal';
 
@@ -53,6 +53,9 @@ export default function ReviewStation() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [sendingMessage, setSendingMessage] = useState(false);
+
+  // Ref for TransactionForm to call confirmWithSave
+  const formRef = useRef<TransactionFormRef>(null);
 
   // Load company and transactions
   useEffect(() => {
@@ -363,7 +366,7 @@ export default function ReviewStation() {
       ...REVIEW_SHORTCUTS.CONFIRM,
       handler: () => {
         if (selectedTransaction?.status === 'pending') {
-          handleConfirm();
+          formRef.current?.confirmWithSave();
         }
       },
     },
@@ -371,7 +374,7 @@ export default function ReviewStation() {
       ...REVIEW_SHORTCUTS.CONFIRM_NEXT,
       handler: () => {
         if (selectedTransaction?.status === 'pending') {
-          handleConfirm();
+          formRef.current?.confirmWithSave();
         }
       },
     },
@@ -486,6 +489,7 @@ export default function ReviewStation() {
                 ) : (
                   <>
                     <TransactionForm
+                      ref={formRef}
                       data={{
                         transaction_date: selectedTransaction.transaction_date,
                         amount: selectedTransaction.amount,
