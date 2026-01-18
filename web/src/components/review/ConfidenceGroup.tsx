@@ -6,7 +6,7 @@ export interface TransactionItem {
   amount: number | null;
   vendor_name: string | null;
   ai_confidence: number | null;
-  status: 'pending' | 'confirmed';
+  status: 'pending' | 'confirmed' | 'on_hold';
 }
 
 interface ConfidenceGroupProps {
@@ -34,6 +34,7 @@ export default function ConfidenceGroup({
   const pendingTransactions = transactions.filter((t) => t.status === 'pending');
   const pendingCount = pendingTransactions.length;
   const confirmedCount = transactions.filter((t) => t.status === 'confirmed').length;
+  const onHoldCount = transactions.filter((t) => t.status === 'on_hold').length;
 
   function toggleSelection(id: string, e: React.MouseEvent) {
     e.stopPropagation();
@@ -87,7 +88,7 @@ export default function ConfidenceGroup({
             {title}
           </span>
           <span className="text-sm text-gray-500">
-            ({pendingCount}件要確認 / {confirmedCount}件確認済)
+            ({pendingCount}件要確認{onHoldCount > 0 && ` / ${onHoldCount}件確認待ち`} / {confirmedCount}件確認済)
           </span>
         </div>
         {!isHighConfidence && pendingCount > 0 && (
@@ -154,9 +155,11 @@ export default function ConfidenceGroup({
                   <span className={`text-xs px-1.5 py-0.5 rounded-full ${
                     txn.status === 'confirmed'
                       ? 'bg-green-100 text-green-700'
+                      : txn.status === 'on_hold'
+                      ? 'bg-yellow-100 text-yellow-700'
                       : 'bg-orange-100 text-orange-700'
                   }`}>
-                    {txn.status === 'confirmed' ? '済' : '未'}
+                    {txn.status === 'confirmed' ? '済' : txn.status === 'on_hold' ? '待' : '未'}
                   </span>
                 </div>
                 <div className="text-xs text-gray-500 flex gap-2">

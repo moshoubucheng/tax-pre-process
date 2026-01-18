@@ -263,7 +263,7 @@ export async function getMonthlyTotal(
 export async function getStatusCounts(
   db: D1Database,
   companyId: string
-): Promise<{ pending: number; confirmed: number }> {
+): Promise<{ pending: number; confirmed: number; on_hold: number }> {
   const result = await db
     .prepare(
       `SELECT status, COUNT(*) as count
@@ -274,10 +274,11 @@ export async function getStatusCounts(
     .bind(companyId)
     .all<{ status: string; count: number }>();
 
-  const counts = { pending: 0, confirmed: 0 };
+  const counts = { pending: 0, confirmed: 0, on_hold: 0 };
   for (const row of result.results) {
     if (row.status === 'pending') counts.pending = row.count;
     if (row.status === 'confirmed') counts.confirmed = row.count;
+    if (row.status === 'on_hold') counts.on_hold = row.count;
   }
   return counts;
 }

@@ -201,7 +201,7 @@ transactions.put('/:id', async (c) => {
       return c.json({ error: '確認済みの取引は変更できません' }, 403);
     }
 
-    // Update allowed fields (only admin can change status)
+    // Update allowed fields
     const updateData: Record<string, unknown> = {
       transaction_date: body.transaction_date,
       amount: body.amount,
@@ -209,11 +209,16 @@ transactions.put('/:id', async (c) => {
       account_debit: body.account_debit,
       account_credit: body.account_credit,
       tax_category: body.tax_category,
+      description: body.description,
     };
 
-    // Only admin can change status
+    // Admin can change status freely
     if (user.role === 'admin' && body.status) {
       updateData.status = body.status;
+    }
+    // Client can reply to on_hold items (changes status to pending)
+    else if (user.role !== 'admin' && transaction.status === 'on_hold' && body.reply === true) {
+      updateData.status = 'pending';
     }
 
     await updateTransaction(c.env.DB, id, updateData);
@@ -257,6 +262,7 @@ transactions.put('/:id/confirm', async (c) => {
 });
 
 // PUT /api/transactions/:id/unlock - Unlock transaction (Admin only)
+// Allows reverting confirmed or on_hold status back to pending
 transactions.put('/:id/unlock', async (c) => {
   try {
     const user = c.get('user');
@@ -273,8 +279,8 @@ transactions.put('/:id/unlock', async (c) => {
       return c.json({ error: '取引が見つかりません' }, 404);
     }
 
-    if (transaction.status !== 'confirmed') {
-      return c.json({ error: '確認済みではありません' }, 400);
+    if (transaction.status !== 'confirmed' && transaction.status !== 'on_hold') {
+      return c.json({ error: '確認済みまたは確認待ちではありません' }, 400);
     }
 
     await updateTransaction(c.env.DB, id, { status: 'pending' });

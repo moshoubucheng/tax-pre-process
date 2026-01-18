@@ -8,6 +8,7 @@ interface DashboardStats {
   monthly_total: number;
   pending_count: number;
   confirmed_count: number;
+  on_hold_count: number;
 }
 
 interface BusinessYearAlert {
@@ -40,7 +41,8 @@ interface TransactionDetail {
   account_credit: string;
   tax_category: string | null;
   ai_confidence: number | null;
-  status: 'pending' | 'confirmed';
+  description: string | null;
+  status: 'pending' | 'confirmed' | 'on_hold';
   image_key: string;
   created_at: string;
 }
@@ -71,8 +73,10 @@ export default function ClientDashboard() {
   const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([]);
   const [pendingList, setPendingList] = useState<PendingTransaction[]>([]);
   const [confirmedList, setConfirmedList] = useState<PendingTransaction[]>([]);
+  const [onHoldList, setOnHoldList] = useState<PendingTransaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [businessYearAlert, setBusinessYearAlert] = useState<BusinessYearAlert | null>(null);
+  const [replying, setReplying] = useState(false);
 
   // Transaction detail modal
   const [selectedTxn, setSelectedTxn] = useState<TransactionDetail | null>(null);
@@ -86,6 +90,7 @@ export default function ClientDashboard() {
     vendor_name: '',
     account_debit: '',
     tax_category: '',
+    description: '',
   });
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -109,17 +114,19 @@ export default function ClientDashboard() {
 
   async function loadDashboard() {
     try {
-      const [statsRes, monthlyRes, pendingRes, confirmedRes, alertRes] = await Promise.all([
+      const [statsRes, monthlyRes, pendingRes, confirmedRes, onHoldRes, alertRes] = await Promise.all([
         api.get<DashboardStats>('/dashboard/stats'),
         api.get<{ data: MonthlyData[] }>('/dashboard/monthly'),
         api.get<{ data: PendingTransaction[] }>('/dashboard/pending'),
         api.get<{ data: PendingTransaction[] }>('/dashboard/confirmed'),
+        api.get<{ data: PendingTransaction[] }>('/dashboard/on-hold'),
         api.get<BusinessYearAlert>('/dashboard/business-year-alert'),
       ]);
       setStats(statsRes);
       setMonthlyData(monthlyRes.data || []);
       setPendingList(pendingRes.data || []);
       setConfirmedList(confirmedRes.data || []);
+      setOnHoldList(onHoldRes.data || []);
       setBusinessYearAlert(alertRes);
     } catch (err) {
       console.error('Failed to load dashboard:', err);
@@ -182,6 +189,7 @@ export default function ClientDashboard() {
       vendor_name: selectedTxn.vendor_name || '',
       account_debit: selectedTxn.account_debit || '',
       tax_category: selectedTxn.tax_category || '',
+      description: selectedTxn.description || '',
     });
     setIsEditing(true);
   }
@@ -197,6 +205,7 @@ export default function ClientDashboard() {
         vendor_name: editForm.vendor_name,
         account_debit: editForm.account_debit,
         tax_category: editForm.tax_category,
+        description: editForm.description,
       });
 
       // Update local state
@@ -207,6 +216,7 @@ export default function ClientDashboard() {
         vendor_name: editForm.vendor_name,
         account_debit: editForm.account_debit,
         tax_category: editForm.tax_category,
+        description: editForm.description,
       });
 
       // Update lists
@@ -220,6 +230,7 @@ export default function ClientDashboard() {
 
       setPendingList(updateList(pendingList));
       setConfirmedList(updateList(confirmedList));
+      setOnHoldList(updateList(onHoldList));
 
       setIsEditing(false);
       alert('保存しました');
@@ -227,6 +238,39 @@ export default function ClientDashboard() {
       alert(err instanceof Error ? err.message : '保存に失敗しました');
     } finally {
       setSaving(false);
+    }
+  }
+
+  // Reply to on_hold transaction (sends it back to admin as pending)
+  async function handleReply() {
+    if (!selectedTxn || selectedTxn.status !== 'on_hold') return;
+
+    setReplying(true);
+    try {
+      await api.put(`/transactions/${selectedTxn.id}`, {
+        description: editForm.description,
+        vendor_name: editForm.vendor_name,
+        reply: true, // This triggers status change to pending
+      });
+
+      // Remove from on_hold list
+      setOnHoldList(onHoldList.filter(t => t.id !== selectedTxn.id));
+
+      // Update stats
+      if (stats) {
+        setStats({
+          ...stats,
+          on_hold_count: stats.on_hold_count - 1,
+          pending_count: stats.pending_count + 1,
+        });
+      }
+
+      closeDetail();
+      alert('回答を送信しました');
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '送信に失敗しました');
+    } finally {
+      setReplying(false);
     }
   }
 
@@ -277,6 +321,25 @@ export default function ClientDashboard() {
 
   return (
     <div className="space-y-6">
+      {/* Action Required Alert - On Hold Items */}
+      {(stats?.on_hold_count || 0) > 0 && (
+        <div className="bg-yellow-50 border-2 border-yellow-400 rounded-lg p-4">
+          <div className="flex items-center gap-3">
+            <div className="flex-shrink-0">
+              <svg className="w-8 h-8 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <p className="font-semibold text-yellow-800">確認依頼 (Action Required)</p>
+              <p className="text-sm text-yellow-700">
+                {stats?.on_hold_count}件の取引について、使途・内容の確認をお願いします
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Business Year Alert */}
       {businessYearAlert?.alert && (
         <div className={`rounded-lg p-4 flex items-start gap-3 ${
@@ -433,6 +496,54 @@ export default function ClientDashboard() {
         )}
       </div>
 
+      {/* On Hold Transactions - Action Required */}
+      {onHoldList.length > 0 && (
+        <div className="bg-yellow-50 rounded-lg shadow-sm p-4 border border-yellow-200">
+          <h2 className="text-lg font-semibold text-yellow-800 mb-4 flex items-center gap-2">
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+            </svg>
+            確認依頼
+            <span className="text-sm font-normal">({onHoldList.length}件)</span>
+          </h2>
+          <p className="text-sm text-yellow-700 mb-4">
+            以下の取引について、使途（何に使ったか）をご記入ください。
+          </p>
+
+          <ul className="divide-y divide-yellow-200">
+            {onHoldList.map((txn) => (
+              <li
+                key={txn.id}
+                onClick={() => openTransactionDetail(txn.id)}
+                className="py-3 flex items-center justify-between cursor-pointer hover:bg-yellow-100 -mx-4 px-4 transition-colors"
+              >
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium text-gray-900">
+                      {txn.vendor_name || '不明な店舗'}
+                    </p>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-200 text-yellow-800">
+                      要回答
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-500">
+                    {txn.transaction_date || '日付不明'}
+                  </p>
+                </div>
+                <div className="text-right flex items-center gap-2">
+                  <p className="font-medium text-gray-900">
+                    ¥{(txn.amount || 0).toLocaleString()}
+                  </p>
+                  <svg className="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {/* Pending Transactions */}
       <div className="bg-white rounded-lg shadow-sm p-4">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">
@@ -573,8 +684,43 @@ export default function ClientDashboard() {
                     </div>
                   </div>
 
+                  {/* On Hold Reply Form */}
+                  {selectedTxn.status === 'on_hold' && (
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 space-y-3">
+                      <div className="flex items-center gap-2 text-yellow-800">
+                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                        </svg>
+                        <span className="font-semibold">確認依頼</span>
+                      </div>
+                      <p className="text-sm text-yellow-700">
+                        この取引の使途（何に使ったか）を教えてください。
+                      </p>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">店名/取引先 *</label>
+                        <input
+                          type="text"
+                          value={editForm.vendor_name}
+                          onChange={(e) => setEditForm({ ...editForm, vendor_name: e.target.value })}
+                          placeholder="例: コンビニ、〇〇商店"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">使途・備考 *</label>
+                        <textarea
+                          value={editForm.description}
+                          onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                          placeholder="例: 打ち合わせ用のお茶代、事務用品の購入など"
+                          rows={3}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                        />
+                      </div>
+                    </div>
+                  )}
+
                   {/* Edit Form or View Mode */}
-                  {isEditing ? (
+                  {isEditing && selectedTxn.status !== 'on_hold' ? (
                     <div className="space-y-3">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">日付</label>
@@ -630,16 +776,21 @@ export default function ClientDashboard() {
                         </select>
                       </div>
                     </div>
-                  ) : (
+                  ) : selectedTxn.status !== 'on_hold' && (
                     <div className="space-y-3">
                       <div className="flex justify-between items-center">
                         <span className="text-gray-500">ステータス</span>
-                        <span className={`px-2 py-1 rounded-full text-sm ${
+                        <span className={`px-2 py-1 rounded-full text-sm flex items-center gap-1 ${
                           selectedTxn.status === 'confirmed'
                             ? 'bg-green-100 text-green-700'
                             : 'bg-orange-100 text-orange-700'
                         }`}>
-                          {selectedTxn.status === 'confirmed' ? '確認済' : '要確認'}
+                          {selectedTxn.status === 'confirmed' && (
+                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                            </svg>
+                          )}
+                          {selectedTxn.status === 'confirmed' ? '確認済 (ロック)' : '要確認'}
                         </span>
                       </div>
                       <div className="flex justify-between">
@@ -666,6 +817,12 @@ export default function ClientDashboard() {
                         <span className="text-gray-500">税区分</span>
                         <span className="font-medium">{selectedTxn.tax_category || '未設定'}</span>
                       </div>
+                      {selectedTxn.description && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">備考</span>
+                          <span className="font-medium">{selectedTxn.description}</span>
+                        </div>
+                      )}
                       {selectedTxn.ai_confidence !== null && (
                         <div className="flex justify-between">
                           <span className="text-gray-500">AI信頼度</span>
@@ -682,7 +839,24 @@ export default function ClientDashboard() {
                 </div>
 
                 <div className="p-4 border-t border-gray-200">
-                  {isEditing ? (
+                  {/* On Hold - Reply Button */}
+                  {selectedTxn.status === 'on_hold' ? (
+                    <div className="flex gap-2">
+                      <button
+                        onClick={closeDetail}
+                        className="flex-1 py-2 border border-gray-300 rounded-md text-sm"
+                      >
+                        キャンセル
+                      </button>
+                      <button
+                        onClick={handleReply}
+                        disabled={replying || !editForm.description.trim()}
+                        className="flex-1 py-2 bg-yellow-600 text-white rounded-md text-sm disabled:opacity-50 hover:bg-yellow-700"
+                      >
+                        {replying ? '送信中...' : '回答を送信'}
+                      </button>
+                    </div>
+                  ) : isEditing ? (
                     <div className="flex gap-2">
                       <button
                         onClick={() => setIsEditing(false)}
@@ -718,9 +892,12 @@ export default function ClientDashboard() {
                             </button>
                           </div>
                         ) : (
-                          <span className="text-sm text-green-600">
-                            ✓ 管理者により確認済み
-                          </span>
+                          <div className="flex items-center gap-2 text-green-600">
+                            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                            </svg>
+                            <span className="text-sm">管理者により確認済み（編集不可）</span>
+                          </div>
                         )}
                       </div>
                       <button

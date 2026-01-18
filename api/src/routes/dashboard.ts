@@ -37,6 +37,7 @@ dashboard.get('/stats', async (c) => {
       monthly_total: monthlyTotal,
       pending_count: counts.pending,
       confirmed_count: counts.confirmed,
+      on_hold_count: counts.on_hold,
     });
   } catch (error) {
     console.error('Dashboard stats error:', error);
@@ -105,6 +106,41 @@ dashboard.get('/pending', async (c) => {
   } catch (error) {
     console.error('Pending transactions error:', error);
     return c.json({ error: '要確認リストの取得に失敗しました' }, 500);
+  }
+});
+
+// GET /api/dashboard/on-hold - Get on_hold transactions (need client response)
+dashboard.get('/on-hold', async (c) => {
+  try {
+    const user = c.get('user');
+
+    if (!user.company_id) {
+      return c.json({ error: '会社情報が見つかりません' }, 400);
+    }
+
+    const transactions = await getTransactionsByCompany(
+      c.env.DB,
+      user.company_id,
+      {
+        status: 'on_hold',
+        limit: 100,
+      }
+    );
+
+    // Return fields needed for on_hold list
+    const onHoldList = transactions.map((t) => ({
+      id: t.id,
+      transaction_date: t.transaction_date,
+      amount: t.amount,
+      vendor_name: t.vendor_name,
+      ai_confidence: t.ai_confidence,
+      description: t.description,
+    }));
+
+    return c.json({ data: onHoldList });
+  } catch (error) {
+    console.error('On-hold transactions error:', error);
+    return c.json({ error: '確認依頼リストの取得に失敗しました' }, 500);
   }
 });
 

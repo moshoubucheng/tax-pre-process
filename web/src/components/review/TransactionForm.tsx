@@ -13,11 +13,12 @@ interface TransactionFormProps {
   data: TransactionFormData;
   aiConfidence: number | null;
   lowConfidenceFields?: string[];
-  status: 'pending' | 'confirmed';
+  status: 'pending' | 'confirmed' | 'on_hold';
   saving: boolean;
   onSave: (data: TransactionFormData) => void;
   onConfirm: () => void;
   onRevert?: () => void;
+  onHold?: () => void;
 }
 
 export default function TransactionForm({
@@ -29,6 +30,7 @@ export default function TransactionForm({
   onSave,
   onConfirm,
   onRevert,
+  onHold,
 }: TransactionFormProps) {
   const [formData, setFormData] = useState<TransactionFormData>(data);
   const [hasChanges, setHasChanges] = useState(false);
@@ -72,9 +74,11 @@ export default function TransactionForm({
           <span className={`px-2 py-1 rounded-full text-sm ${
             status === 'confirmed'
               ? 'bg-green-100 text-green-700'
+              : status === 'on_hold'
+              ? 'bg-yellow-100 text-yellow-700'
               : 'bg-orange-100 text-orange-700'
           }`}>
-            {status === 'confirmed' ? '確認済' : '要確認'}
+            {status === 'confirmed' ? '確認済' : status === 'on_hold' ? '確認待ち' : '要確認'}
           </span>
           {aiConfidence !== null && (
             <span className={`text-sm ${
@@ -219,7 +223,26 @@ export default function TransactionForm({
               編集を許可
             </button>
           )}
+          {status === 'on_hold' && onRevert && (
+            <button
+              onClick={onRevert}
+              disabled={saving}
+              className="flex-1 py-2 px-4 bg-blue-600 text-white rounded-md disabled:opacity-50 hover:bg-blue-700 text-sm"
+            >
+              要確認に戻す
+            </button>
+          )}
         </div>
+        {/* Hold button for pending transactions */}
+        {status === 'pending' && onHold && (
+          <button
+            onClick={onHold}
+            disabled={saving}
+            className="w-full py-2 px-4 bg-yellow-500 text-white rounded-md disabled:opacity-50 hover:bg-yellow-600 text-sm"
+          >
+            確認依頼（使途不明）
+          </button>
+        )}
         <div className="text-xs text-gray-500 text-center">
           ← / → で前後の取引に移動、Esc で戻る
         </div>

@@ -21,7 +21,7 @@ interface TransactionDetail {
   account_credit: string;
   tax_category: string | null;
   ai_confidence: number | null;
-  status: 'pending' | 'confirmed';
+  status: 'pending' | 'confirmed' | 'on_hold';
   image_key: string;
 }
 
@@ -114,6 +114,7 @@ export default function ReviewStation() {
   // Progress stats
   const pendingCount = transactions.filter((t) => t.status === 'pending').length;
   const confirmedCount = transactions.filter((t) => t.status === 'confirmed').length;
+  const onHoldCount = transactions.filter((t) => t.status === 'on_hold').length;
   const totalCount = transactions.length;
 
   // Navigation helpers
@@ -234,7 +235,7 @@ export default function ReviewStation() {
     }
   }
 
-  // Revert handler (unlock confirmed transaction for editing)
+  // Revert handler (unlock confirmed/on_hold transaction for editing)
   async function handleRevert() {
     if (!selectedId) return;
     setReverting(true);
@@ -254,6 +255,30 @@ export default function ReviewStation() {
       alert(err instanceof Error ? err.message : '確認解除に失敗しました');
     } finally {
       setReverting(false);
+    }
+  }
+
+  // Hold handler (set transaction to on_hold for client feedback)
+  async function handleHold() {
+    if (!selectedId) return;
+    setSaving(true);
+    try {
+      await api.put(`/transactions/${selectedId}`, { status: 'on_hold' });
+      // Update local state
+      setTransactions((prev) =>
+        prev.map((t) =>
+          t.id === selectedId ? { ...t, status: 'on_hold' as const } : t
+        )
+      );
+      if (selectedTransaction) {
+        setSelectedTransaction({ ...selectedTransaction, status: 'on_hold' });
+      }
+      // Move to next pending
+      setTimeout(() => goToNextPending(), 100);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '確認依頼に失敗しました');
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -336,6 +361,11 @@ export default function ReviewStation() {
               {pendingCount}件要確認
             </span>
           )}
+          {onHoldCount > 0 && (
+            <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full">
+              {onHoldCount}件確認待ち
+            </span>
+          )}
         </div>
       </header>
 
@@ -397,6 +427,7 @@ export default function ReviewStation() {
                     onSave={handleSave}
                     onConfirm={handleConfirm}
                     onRevert={() => setShowRevertModal(true)}
+                    onHold={handleHold}
                   />
                 )}
               </div>
