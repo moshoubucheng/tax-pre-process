@@ -48,6 +48,59 @@ transactions.get('/', async (c) => {
   }
 });
 
+// PUT /api/transactions/batch-unlock - Batch unlock (revert) transactions (Admin only)
+// NOTE: This route must be defined before /:id routes to avoid matching issues
+transactions.put('/batch-unlock', async (c) => {
+  try {
+    const user = c.get('user');
+
+    // Only admin can unlock transactions
+    if (user.role !== 'admin') {
+      return c.json({ error: '管理者のみが解除できます' }, 403);
+    }
+
+    const body = await c.req.json();
+    const ids = body.ids as string[];
+
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return c.json({ error: '取引IDを指定してください' }, 400);
+    }
+
+    let unlockedCount = 0;
+    const errors: string[] = [];
+
+    for (const id of ids) {
+      try {
+        const transaction = await getTransactionById(c.env.DB, id);
+
+        if (!transaction) {
+          errors.push(`${id}: 取引が見つかりません`);
+          continue;
+        }
+
+        if (transaction.status !== 'confirmed') {
+          // Not confirmed, skip
+          continue;
+        }
+
+        await updateTransaction(c.env.DB, id, { status: 'pending' });
+        unlockedCount++;
+      } catch (e) {
+        errors.push(`${id}: 解除に失敗しました`);
+      }
+    }
+
+    return c.json({
+      message: `${unlockedCount}件の取引を解除しました`,
+      unlocked_count: unlockedCount,
+      errors: errors.length > 0 ? errors : undefined,
+    });
+  } catch (error) {
+    console.error('Batch unlock error:', error);
+    return c.json({ error: '一括解除に失敗しました' }, 500);
+  }
+});
+
 // PUT /api/transactions/batch-confirm - Batch confirm transactions (Admin only)
 // NOTE: This route must be defined before /:id routes to avoid matching issues
 transactions.put('/batch-confirm', async (c) => {

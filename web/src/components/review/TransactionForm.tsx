@@ -17,6 +17,7 @@ interface TransactionFormProps {
   saving: boolean;
   onSave: (data: TransactionFormData) => void;
   onConfirm: () => void;
+  onRevert?: () => void;
 }
 
 export default function TransactionForm({
@@ -27,6 +28,7 @@ export default function TransactionForm({
   saving,
   onSave,
   onConfirm,
+  onRevert,
 }: TransactionFormProps) {
   const [formData, setFormData] = useState<TransactionFormData>(data);
   const [hasChanges, setHasChanges] = useState(false);
@@ -206,6 +208,15 @@ export default function TransactionForm({
               className="flex-1 py-2 px-4 bg-green-600 text-white rounded-md disabled:opacity-50 hover:bg-green-700 text-sm"
             >
               確認→ (Enter)
+            </button>
+          )}
+          {status === 'confirmed' && onRevert && (
+            <button
+              onClick={onRevert}
+              disabled={saving}
+              className="flex-1 py-2 px-4 bg-orange-600 text-white rounded-md disabled:opacity-50 hover:bg-orange-700 text-sm"
+            >
+              編集を許可
             </button>
           )}
         </div>

@@ -5,6 +5,7 @@ import { useKeyboardShortcuts, REVIEW_SHORTCUTS } from '../hooks/useKeyboardShor
 import ImagePanel from '../components/review/ImagePanel';
 import TransactionForm, { TransactionFormData } from '../components/review/TransactionForm';
 import ConfidenceGroup, { TransactionItem } from '../components/review/ConfidenceGroup';
+import ConfirmRevertModal from '../components/ConfirmRevertModal';
 
 interface CompanyInfo {
   id: string;
@@ -36,6 +37,8 @@ export default function ReviewStation() {
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [saving, setSaving] = useState(false);
   const [batchConfirming, setBatchConfirming] = useState(false);
+  const [showRevertModal, setShowRevertModal] = useState(false);
+  const [reverting, setReverting] = useState(false);
 
   // Load company and transactions
   useEffect(() => {
@@ -231,6 +234,29 @@ export default function ReviewStation() {
     }
   }
 
+  // Revert handler (unlock confirmed transaction for editing)
+  async function handleRevert() {
+    if (!selectedId) return;
+    setReverting(true);
+    try {
+      await api.put(`/transactions/${selectedId}/unlock`, {});
+      // Update local state
+      setTransactions((prev) =>
+        prev.map((t) =>
+          t.id === selectedId ? { ...t, status: 'pending' as const } : t
+        )
+      );
+      if (selectedTransaction) {
+        setSelectedTransaction({ ...selectedTransaction, status: 'pending' });
+      }
+      setShowRevertModal(false);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '確認解除に失敗しました');
+    } finally {
+      setReverting(false);
+    }
+  }
+
   // Keyboard shortcuts
   useKeyboardShortcuts([
     {
@@ -370,6 +396,7 @@ export default function ReviewStation() {
                     saving={saving}
                     onSave={handleSave}
                     onConfirm={handleConfirm}
+                    onRevert={() => setShowRevertModal(true)}
                   />
                 )}
               </div>
@@ -386,6 +413,15 @@ export default function ReviewStation() {
           )}
         </div>
       </div>
+
+      {/* Single Revert Confirmation Modal */}
+      <ConfirmRevertModal
+        isOpen={showRevertModal}
+        onClose={() => setShowRevertModal(false)}
+        onConfirm={handleRevert}
+        mode="single"
+        processing={reverting}
+      />
     </div>
   );
 }

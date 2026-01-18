@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../../lib/api';
 import { useClientContext } from '../../hooks/useClientContext';
 import ImageLightbox from '../../components/ImageLightbox';
+import ConfirmRevertModal from '../../components/ConfirmRevertModal';
 
 interface Transaction {
   id: string;
@@ -37,7 +38,14 @@ export default function ClientTransactions() {
 
   // Selection for batch operations
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectedConfirmedIds, setSelectedConfirmedIds] = useState<Set<string>>(new Set());
   const [batchConfirming, setBatchConfirming] = useState(false);
+  const [batchReverting, setBatchReverting] = useState(false);
+
+  // Revert modals
+  const [singleRevertTxnId, setSingleRevertTxnId] = useState<string | null>(null);
+  const [showBatchRevertModal, setShowBatchRevertModal] = useState(false);
+  const [revertingTxn, setRevertingTxn] = useState<string | null>(null);
 
   // Transaction detail
   const [selectedTxn, setSelectedTxn] = useState<TransactionDetail | null>(null);
@@ -138,6 +146,28 @@ export default function ClientTransactions() {
     }
   }
 
+  function toggleConfirmedSelection(id: string) {
+    setSelectedConfirmedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }
+
+  function toggleSelectAllConfirmed() {
+    const confirmedIds = filteredTransactions.filter(t => t.status === 'confirmed').map(t => t.id);
+    const allSelected = confirmedIds.every(id => selectedConfirmedIds.has(id));
+    if (allSelected) {
+      setSelectedConfirmedIds(new Set());
+    } else {
+      setSelectedConfirmedIds(new Set(confirmedIds));
+    }
+  }
+
   async function handleBatchConfirm() {
     if (selectedIds.size === 0) return;
     setBatchConfirming(true);
@@ -163,6 +193,64 @@ export default function ClientTransactions() {
       alert(err instanceof Error ? err.message : '一括確認に失敗しました');
     } finally {
       setBatchConfirming(false);
+    }
+  }
+
+  // Single transaction revert
+  async function handleSingleRevert() {
+    if (!singleRevertTxnId) return;
+    setRevertingTxn(singleRevertTxnId);
+    try {
+      await api.put(`/transactions/${singleRevertTxnId}/unlock`, {});
+      setTransactions(transactions.map(t =>
+        t.id === singleRevertTxnId ? { ...t, status: 'pending' } : t
+      ));
+      if (selectedTxn?.id === singleRevertTxnId) {
+        setSelectedTxn({ ...selectedTxn, status: 'pending' });
+      }
+      // Update client context
+      if (selectedClient) {
+        setSelectedClient({
+          ...selectedClient,
+          pending_count: selectedClient.pending_count + 1,
+          confirmed_count: selectedClient.confirmed_count - 1,
+        });
+      }
+      setSingleRevertTxnId(null);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '確認解除に失敗しました');
+    } finally {
+      setRevertingTxn(null);
+    }
+  }
+
+  // Batch revert
+  async function handleBatchRevert() {
+    if (selectedConfirmedIds.size === 0) return;
+    setBatchReverting(true);
+    try {
+      const res = await api.put<{ unlocked_count: number }>('/transactions/batch-unlock', {
+        ids: Array.from(selectedConfirmedIds),
+      });
+      setTransactions(transactions.map(t =>
+        selectedConfirmedIds.has(t.id) ? { ...t, status: 'pending' } : t
+      ));
+      // Update client context
+      if (selectedClient) {
+        const unlockedCount = res.unlocked_count || selectedConfirmedIds.size;
+        setSelectedClient({
+          ...selectedClient,
+          pending_count: selectedClient.pending_count + unlockedCount,
+          confirmed_count: selectedClient.confirmed_count - unlockedCount,
+        });
+      }
+      setSelectedConfirmedIds(new Set());
+      setShowBatchRevertModal(false);
+      alert(`${selectedConfirmedIds.size}件の確認を解除しました`);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '一括解除に失敗しました');
+    } finally {
+      setBatchReverting(false);
     }
   }
 
@@ -233,7 +321,7 @@ export default function ClientTransactions() {
         </button>
       </div>
 
-      {/* Batch Actions */}
+      {/* Batch Actions - Pending */}
       {pendingCount > 0 && filterStatus !== 'confirmed' && (
         <div className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-lg">
           <label className="flex items-center gap-2 cursor-pointer">
@@ -262,6 +350,35 @@ export default function ClientTransactions() {
         </div>
       )}
 
+      {/* Batch Actions - Confirmed (for reverting) */}
+      {filterStatus === 'confirmed' && filteredTransactions.length > 0 && (
+        <div className="flex items-center justify-between py-2 px-3 bg-orange-50 rounded-lg">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={
+                filteredTransactions.length > 0 &&
+                filteredTransactions.every(t => selectedConfirmedIds.has(t.id))
+              }
+              onChange={toggleSelectAllConfirmed}
+              className="w-4 h-4 text-orange-600 rounded"
+            />
+            <span className="text-sm text-gray-600">
+              確認済を全選択
+            </span>
+          </label>
+          {selectedConfirmedIds.size > 0 && (
+            <button
+              onClick={() => setShowBatchRevertModal(true)}
+              disabled={batchReverting}
+              className="px-3 py-1 bg-orange-600 text-white text-sm rounded-md disabled:opacity-50"
+            >
+              {batchReverting ? '処理中...' : `${selectedConfirmedIds.size}件を一括解除`}
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Transaction List */}
       <div className="bg-white rounded-lg shadow-sm divide-y divide-gray-100">
         {filteredTransactions.length === 0 ? (
@@ -274,7 +391,7 @@ export default function ClientTransactions() {
               key={txn.id}
               onClick={() => openTransactionDetail(txn.id)}
               className={`p-4 cursor-pointer hover:bg-gray-50 ${
-                selectedIds.has(txn.id) ? 'bg-primary-50' : ''
+                selectedIds.has(txn.id) || selectedConfirmedIds.has(txn.id) ? 'bg-primary-50' : ''
               }`}
             >
               <div className="flex items-start justify-between">
@@ -289,6 +406,18 @@ export default function ClientTransactions() {
                       }}
                       onClick={(e) => e.stopPropagation()}
                       className="mt-1 w-4 h-4 text-primary-600 rounded"
+                    />
+                  )}
+                  {txn.status === 'confirmed' && filterStatus === 'confirmed' && (
+                    <input
+                      type="checkbox"
+                      checked={selectedConfirmedIds.has(txn.id)}
+                      onChange={(e) => {
+                        e.stopPropagation();
+                        toggleConfirmedSelection(txn.id);
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                      className="mt-1 w-4 h-4 text-orange-600 rounded"
                     />
                   )}
                   <div>
@@ -324,6 +453,18 @@ export default function ClientTransactions() {
                       className="px-3 py-1 bg-green-600 text-white text-xs rounded-md disabled:opacity-50"
                     >
                       {confirmingTxn === txn.id ? '...' : '確認'}
+                    </button>
+                  )}
+                  {txn.status === 'confirmed' && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSingleRevertTxnId(txn.id);
+                      }}
+                      disabled={revertingTxn === txn.id}
+                      className="px-3 py-1 bg-gray-200 text-gray-700 text-xs rounded-md hover:bg-gray-300 disabled:opacity-50"
+                    >
+                      {revertingTxn === txn.id ? '...' : '編集'}
                     </button>
                   )}
                 </div>
@@ -448,6 +589,26 @@ export default function ClientTransactions() {
           onClose={() => setLightboxSrc(null)}
         />
       )}
+
+      {/* Single Revert Confirmation Modal */}
+      <ConfirmRevertModal
+        isOpen={singleRevertTxnId !== null}
+        onClose={() => setSingleRevertTxnId(null)}
+        onConfirm={handleSingleRevert}
+        mode="single"
+        processing={revertingTxn !== null}
+      />
+
+      {/* Batch Revert Confirmation Modal */}
+      <ConfirmRevertModal
+        isOpen={showBatchRevertModal}
+        onClose={() => setShowBatchRevertModal(false)}
+        onConfirm={handleBatchRevert}
+        mode="batch"
+        companyName={selectedClient?.name || ''}
+        count={selectedConfirmedIds.size}
+        processing={batchReverting}
+      />
     </div>
   );
 }
