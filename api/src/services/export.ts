@@ -39,17 +39,17 @@ function formatDateForYayoi(isoDate: string | null): string {
 }
 
 /**
- * Calculate tax amount based on tax category
- * 8%: amount * 8 / 108
+ * Calculate tax amount based on tax rate
+ * 8%: amount * 8 / 108 (税込金額から税額を逆算)
  * 10%: amount * 10 / 110
  */
-function calculateTaxAmount(amount: number, taxCategory: string | null): number {
-  if (!taxCategory || amount === 0) return 0;
+function calculateTaxAmount(amount: number, taxRate: number | null): number {
+  if (!taxRate || amount === 0) return 0;
 
-  if (taxCategory.includes('8%')) {
+  if (taxRate === 8) {
     return Math.floor((amount * 8) / 108);
   }
-  if (taxCategory.includes('10%')) {
+  if (taxRate === 10) {
     return Math.floor((amount * 10) / 110);
   }
 
@@ -57,41 +57,105 @@ function calculateTaxAmount(amount: number, taxCategory: string | null): number 
 }
 
 /**
+ * Get tax category string for Yayoi export
+ * Based on transaction type and tax rate
+ */
+function getTaxCategoryForExport(
+  type: 'expense' | 'income',
+  taxRate: number | null,
+  originalCategory: string | null
+): string {
+  // If original category exists, use it
+  if (originalCategory) return originalCategory;
+
+  // Generate based on type and rate
+  if (type === 'expense') {
+    if (taxRate === 8) return '課対仕入内8%(軽)';
+    if (taxRate === 10) return '課対仕入内10%';
+    return '対象外';
+  } else {
+    // income
+    if (taxRate === 8) return '課税売上8%';
+    if (taxRate === 10) return '課税売上10%';
+    return '対象外';
+  }
+}
+
+/**
  * Convert transaction to Yayoi CSV row
+ * Handles different accounting treatment for expense vs income:
+ * - EXPENSE: Tax on debit side (借方)
+ * - INCOME: Tax on credit side (貸方)
  */
 function transactionToYayoiRow(
   transaction: Transaction,
   rowNumber: number
 ): YayoiCSVRow {
-  const taxAmount = calculateTaxAmount(
-    transaction.amount || 0,
+  const amount = transaction.amount || 0;
+  const taxRate = transaction.tax_rate;
+  const taxAmount = calculateTaxAmount(amount, taxRate);
+  const isIncome = transaction.type === 'income';
+
+  // Get appropriate tax category
+  const taxCategory = getTaxCategoryForExport(
+    transaction.type || 'expense',
+    taxRate,
     transaction.tax_category
   );
 
-  return {
-    識別フラグ: '2111', // Normal transaction
-    伝票No: String(rowNumber),
-    決算: '',
-    取引日付: formatDateForYayoi(transaction.transaction_date),
-    借方勘定科目: transaction.account_debit || '',
-    借方補助科目: '',
-    借方部門: '',
-    借方税区分: transaction.tax_category || '',
-    借方金額: String(transaction.amount || 0),
-    借方税金額: String(taxAmount),
-    貸方勘定科目: transaction.account_credit || '現金',
-    貸方補助科目: '',
-    貸方部門: '',
-    貸方税区分: '対象外',
-    貸方金額: String(transaction.amount || 0),
-    貸方税金額: '',
-    摘要: transaction.vendor_name || '',
-    番号: '',
-    期日: '',
-    タイプ: '',
-    生成元: 'Tax-Pre-Process',
-    仕訳メモ: '',
-  };
+  if (isIncome) {
+    // INCOME: Tax category and amount on CREDIT side (貸方)
+    return {
+      識別フラグ: '2111',
+      伝票No: String(rowNumber),
+      決算: '',
+      取引日付: formatDateForYayoi(transaction.transaction_date),
+      借方勘定科目: transaction.account_debit || '売掛金',
+      借方補助科目: '',
+      借方部門: '',
+      借方税区分: '対象外',
+      借方金額: String(amount),
+      借方税金額: '',
+      貸方勘定科目: transaction.account_credit || '売上高',
+      貸方補助科目: '',
+      貸方部門: '',
+      貸方税区分: taxCategory,
+      貸方金額: String(amount),
+      貸方税金額: String(taxAmount),
+      摘要: transaction.vendor_name || '',
+      番号: '',
+      期日: '',
+      タイプ: '',
+      生成元: 'Tax-Pre-Process',
+      仕訳メモ: '',
+    };
+  } else {
+    // EXPENSE: Tax category and amount on DEBIT side (借方)
+    return {
+      識別フラグ: '2111',
+      伝票No: String(rowNumber),
+      決算: '',
+      取引日付: formatDateForYayoi(transaction.transaction_date),
+      借方勘定科目: transaction.account_debit || '',
+      借方補助科目: '',
+      借方部門: '',
+      借方税区分: taxCategory,
+      借方金額: String(amount),
+      借方税金額: String(taxAmount),
+      貸方勘定科目: transaction.account_credit || '現金',
+      貸方補助科目: '',
+      貸方部門: '',
+      貸方税区分: '対象外',
+      貸方金額: String(amount),
+      貸方税金額: '',
+      摘要: transaction.vendor_name || '',
+      番号: '',
+      期日: '',
+      タイプ: '',
+      生成元: 'Tax-Pre-Process',
+      仕訳メモ: '',
+    };
+  }
 }
 
 /**
