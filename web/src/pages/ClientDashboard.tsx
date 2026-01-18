@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell,
+} from 'recharts';
 import { api } from '../lib/api';
 import ImageLightbox from '../components/ImageLightbox';
 
@@ -56,6 +59,28 @@ interface Message {
   message: string;
   created_at: string;
 }
+
+interface FinancialSummary {
+  year: number;
+  month: number;
+  confirmed: {
+    income: number;
+    expense: number;
+    profit: number;
+    income_tax: number;
+    expense_tax: number;
+    tax_estimate: number;
+  };
+  pending: {
+    income: number;
+    expense: number;
+  };
+  monthly_trend: { month: string; income: number; expense: number }[];
+  expense_breakdown: { name: string; value: number }[];
+}
+
+// Colors for pie chart
+const PIE_COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
 
 const ACCOUNT_OPTIONS = [
   '旅費交通費',
@@ -123,9 +148,20 @@ export default function ClientDashboard() {
   // Image lightbox
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
+  // Financial Summary (BI)
+  const [financialSummary, setFinancialSummary] = useState<FinancialSummary | null>(null);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+  const [loadingFinancial, setLoadingFinancial] = useState(false);
+
   useEffect(() => {
     loadDashboard();
   }, []);
+
+  // Load financial summary when year/month changes
+  useEffect(() => {
+    loadFinancialSummary();
+  }, [selectedYear, selectedMonth]);
 
   async function loadDashboard() {
     try {
@@ -148,6 +184,35 @@ export default function ClientDashboard() {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function loadFinancialSummary() {
+    setLoadingFinancial(true);
+    try {
+      const res = await api.get<FinancialSummary>(
+        `/dashboard/financial-summary?year=${selectedYear}&month=${selectedMonth}`
+      );
+      setFinancialSummary(res);
+    } catch (err) {
+      console.error('Failed to load financial summary:', err);
+    } finally {
+      setLoadingFinancial(false);
+    }
+  }
+
+  // Format currency
+  function formatCurrency(amount: number): string {
+    return new Intl.NumberFormat('ja-JP', {
+      style: 'currency',
+      currency: 'JPY',
+      maximumFractionDigits: 0,
+    }).format(amount);
+  }
+
+  // Format month for chart display
+  function formatChartMonth(monthStr: string): string {
+    const [, month] = monthStr.split('-');
+    return `${month}月`;
   }
 
   async function handleSearch() {
@@ -433,7 +498,184 @@ export default function ClientDashboard() {
         </div>
       )}
 
-      {/* Stats Cards */}
+      {/* ===== Financial Summary Section (BI Dashboard) ===== */}
+      <div className="bg-white rounded-lg shadow-sm p-4 md:p-6">
+        {/* Header with Year/Month Selector */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+          <h2 className="text-lg font-semibold text-gray-900">財務サマリー</h2>
+          <div className="flex items-center gap-2">
+            <select
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(Number(e.target.value))}
+              className="px-3 py-1.5 border border-gray-300 rounded-md text-sm"
+            >
+              {[0, 1, 2].map((offset) => {
+                const year = new Date().getFullYear() - offset;
+                return <option key={year} value={year}>{year}年</option>;
+              })}
+            </select>
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(Number(e.target.value))}
+              className="px-3 py-1.5 border border-gray-300 rounded-md text-sm"
+            >
+              {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
+                <option key={month} value={month}>{month}月</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {loadingFinancial ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600"></div>
+          </div>
+        ) : financialSummary ? (
+          <>
+            {/* Financial Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
+              {/* Income */}
+              <div className="bg-green-50 rounded-lg p-4 border-l-4 border-green-500">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-green-600 text-lg">+</span>
+                  <p className="text-sm text-gray-600">売上</p>
+                </div>
+                <p className="text-xl md:text-2xl font-bold text-green-600">
+                  {formatCurrency(financialSummary.confirmed.income)}
+                </p>
+                {financialSummary.pending.income > 0 && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    (+{formatCurrency(financialSummary.pending.income)} 未確認)
+                  </p>
+                )}
+              </div>
+
+              {/* Expense */}
+              <div className="bg-red-50 rounded-lg p-4 border-l-4 border-red-500">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-red-600 text-lg">▲</span>
+                  <p className="text-sm text-gray-600">経費</p>
+                </div>
+                <p className="text-xl md:text-2xl font-bold text-red-600">
+                  {formatCurrency(financialSummary.confirmed.expense)}
+                </p>
+                {financialSummary.pending.expense > 0 && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    (+{formatCurrency(financialSummary.pending.expense)} 未確認)
+                  </p>
+                )}
+              </div>
+
+              {/* Profit */}
+              <div className={`rounded-lg p-4 border-l-4 ${
+                financialSummary.confirmed.profit >= 0
+                  ? 'bg-blue-50 border-blue-500'
+                  : 'bg-orange-50 border-orange-500'
+              }`}>
+                <div className="flex items-center gap-2 mb-1">
+                  <svg className={`w-4 h-4 ${financialSummary.confirmed.profit >= 0 ? 'text-blue-600' : 'text-orange-600'}`} fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                  </svg>
+                  <p className="text-sm text-gray-600">粗利</p>
+                </div>
+                <p className={`text-xl md:text-2xl font-bold ${
+                  financialSummary.confirmed.profit >= 0 ? 'text-blue-600' : 'text-orange-600'
+                }`}>
+                  {formatCurrency(financialSummary.confirmed.profit)}
+                </p>
+              </div>
+
+              {/* Tax Estimate */}
+              <div className="bg-gray-50 rounded-lg p-4 border-l-4 border-gray-400">
+                <div className="flex items-center gap-2 mb-1">
+                  <svg className="w-4 h-4 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V4a2 2 0 00-2-2H6zm1 2a1 1 0 000 2h6a1 1 0 100-2H7zm6 7a1 1 0 011 1v3a1 1 0 11-2 0v-3a1 1 0 011-1zm-3 3a1 1 0 100 2h.01a1 1 0 100-2H10zm-4 1a1 1 0 011-1h.01a1 1 0 110 2H7a1 1 0 01-1-1zm1-4a1 1 0 100 2h.01a1 1 0 100-2H7zm2 1a1 1 0 011-1h.01a1 1 0 110 2H10a1 1 0 01-1-1zm4-4a1 1 0 100 2h.01a1 1 0 100-2H13zM9 9a1 1 0 011-1h.01a1 1 0 110 2H10a1 1 0 01-1-1zM7 8a1 1 0 000 2h.01a1 1 0 000-2H7z" clipRule="evenodd" />
+                  </svg>
+                  <p className="text-sm text-gray-600">消費税目安</p>
+                </div>
+                <p className="text-xl md:text-2xl font-bold text-gray-700">
+                  {formatCurrency(financialSummary.confirmed.tax_estimate)}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  売上税額 - 仕入税額
+                </p>
+              </div>
+            </div>
+
+            {/* Charts Section */}
+            <div className="grid md:grid-cols-2 gap-6">
+              {/* Monthly Trend Bar Chart */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h3 className="text-sm font-medium text-gray-700 mb-4">月次推移（過去6ヶ月）</h3>
+                {financialSummary.monthly_trend.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={200}>
+                    <BarChart data={financialSummary.monthly_trend}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                      <XAxis
+                        dataKey="month"
+                        tickFormatter={formatChartMonth}
+                        tick={{ fontSize: 12 }}
+                      />
+                      <YAxis
+                        tickFormatter={(v) => `${Math.floor(v / 10000)}万`}
+                        tick={{ fontSize: 12 }}
+                      />
+                      <Tooltip
+                        formatter={(value: number) => formatCurrency(value)}
+                        labelFormatter={(label) => `${label.replace('-', '年')}月`}
+                      />
+                      <Bar dataKey="income" name="売上" fill="#10B981" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="expense" name="経費" fill="#EF4444" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-[200px] text-gray-500 text-sm">
+                    データがありません
+                  </div>
+                )}
+              </div>
+
+              {/* Expense Breakdown Pie Chart */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h3 className="text-sm font-medium text-gray-700 mb-4">経費内訳（当月Top5）</h3>
+                {financialSummary.expense_breakdown.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={200}>
+                    <PieChart>
+                      <Pie
+                        data={financialSummary.expense_breakdown}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={40}
+                        outerRadius={70}
+                        paddingAngle={2}
+                        dataKey="value"
+                        nameKey="name"
+                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        labelLine={false}
+                      >
+                        {financialSummary.expense_breakdown.map((_, index) => (
+                          <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-[200px] text-gray-500 text-sm">
+                    データがありません
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="text-center py-8 text-gray-500">
+            データの読み込みに失敗しました
+          </div>
+        )}
+      </div>
+
+      {/* ===== Status Cards (Original) ===== */}
       <div className="grid grid-cols-2 gap-4">
         {/* Pending Items */}
         <div
