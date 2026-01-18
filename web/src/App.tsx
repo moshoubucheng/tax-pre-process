@@ -5,6 +5,7 @@ import Login from './pages/Login';
 import ClientDashboard from './pages/ClientDashboard';
 import Upload from './pages/Upload';
 import AdminHome from './pages/AdminHome';
+import AdminTransactions from './pages/AdminTransactions';
 import Clients from './pages/Clients';
 import AdminReceipts from './pages/AdminReceipts';
 import Chat from './pages/Chat';
@@ -63,6 +64,15 @@ function AppRoutes() {
         <PrivateRoute adminOnly>
           <Layout>
             <Clients />
+          </Layout>
+        </PrivateRoute>
+      } />
+
+      {/* Admin Transactions - Global view across all companies */}
+      <Route path="/admin/transactions" element={
+        <PrivateRoute adminOnly>
+          <Layout>
+            <AdminTransactions />
           </Layout>
         </PrivateRoute>
       } />

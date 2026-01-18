@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../lib/api';
 import { useClientContext, SelectedClient } from '../hooks/useClientContext';
 
@@ -16,10 +16,14 @@ interface Company {
 
 export default function Clients() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { setSelectedClient } = useClientContext();
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState<string | null>(null);
+
+  // Filter from URL
+  const filterType = searchParams.get('filter');
 
   // New company form
   const [showForm, setShowForm] = useState(false);
@@ -167,21 +171,40 @@ export default function Clients() {
     );
   }
 
+  // Filter companies based on URL param
+  const filteredCompanies = filterType === 'settlement'
+    ? companies.filter(c => c.settlement_color === 'red' || c.settlement_color === 'yellow')
+    : companies;
+
+  const title = filterType === 'settlement' ? '決算アラート' : '顧問先一覧';
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <h1 className="text-xl font-bold text-gray-900">顧問先一覧</h1>
+          {filterType && (
+            <button
+              onClick={() => navigate('/clients')}
+              className="p-2 hover:bg-gray-100 rounded-lg"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+          )}
+          <h1 className="text-xl font-bold text-gray-900">{title}</h1>
           <span className="text-sm bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
-            {companies.length}社
+            {filteredCompanies.length}社
           </span>
         </div>
-        <button
-          onClick={() => setShowForm(true)}
-          className="bg-primary-600 text-white px-4 py-2 rounded-md text-sm"
-        >
-          新規追加
-        </button>
+        {!filterType && (
+          <button
+            onClick={() => setShowForm(true)}
+            className="bg-primary-600 text-white px-4 py-2 rounded-md text-sm"
+          >
+            新規追加
+          </button>
+        )}
       </div>
 
       {/* New Company Form Modal */}
@@ -285,7 +308,7 @@ export default function Clients() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {companies.map((company) => (
+              {filteredCompanies.map((company) => (
                 <tr
                   key={company.id}
                   onClick={() => handleSelectClient(company)}
@@ -339,7 +362,7 @@ export default function Clients() {
 
         {/* Mobile List */}
         <div className="md:hidden divide-y divide-gray-200">
-          {companies.map((company) => (
+          {filteredCompanies.map((company) => (
             <div
               key={company.id}
               onClick={() => handleSelectClient(company)}
@@ -381,9 +404,9 @@ export default function Clients() {
           ))}
         </div>
 
-        {companies.length === 0 && (
+        {filteredCompanies.length === 0 && (
           <div className="text-center py-12 text-gray-500">
-            顧問先がまだ登録されていません
+            {filterType === 'settlement' ? '決算アラートはありません' : '顧問先がまだ登録されていません'}
           </div>
         )}
       </div>
