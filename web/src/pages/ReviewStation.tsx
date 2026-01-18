@@ -352,6 +352,22 @@ export default function ReviewStation() {
       handler: goToNext,
     },
     {
+      ...REVIEW_SHORTCUTS.HOLD,
+      handler: () => {
+        if (selectedTransaction?.status === 'pending') {
+          handleHold();
+        }
+      },
+    },
+    {
+      ...REVIEW_SHORTCUTS.CONFIRM,
+      handler: () => {
+        if (selectedTransaction?.status === 'pending') {
+          handleConfirm();
+        }
+      },
+    },
+    {
       ...REVIEW_SHORTCUTS.CONFIRM_NEXT,
       handler: () => {
         if (selectedTransaction?.status === 'pending') {

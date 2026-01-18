@@ -240,11 +240,11 @@ export default function TransactionForm({
             disabled={saving}
             className="w-full py-2 px-4 bg-yellow-500 text-white rounded-md disabled:opacity-50 hover:bg-yellow-600 text-sm"
           >
-            確認依頼（使途不明）
+            確認依頼 (←)
           </button>
         )}
         <div className="text-xs text-gray-500 text-center">
-          ← / → で前後の取引に移動、Esc で戻る
+          ↑↓ 前後の取引、← 確認依頼 / → 確認、Esc 戻る
         </div>
       </div>
     </div>

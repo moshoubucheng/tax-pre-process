@@ -44,7 +44,9 @@ export function useKeyboardShortcuts(
             shortcut.ctrl ||
             shortcut.key === 'Escape' ||
             shortcut.key === 'ArrowLeft' ||
-            shortcut.key === 'ArrowRight';
+            shortcut.key === 'ArrowRight' ||
+            shortcut.key === 'ArrowUp' ||
+            shortcut.key === 'ArrowDown';
 
           if (isInputElement && !alwaysAllowed) {
             continue;
@@ -71,7 +73,9 @@ export function useKeyboardShortcuts(
 export const REVIEW_SHORTCUTS = {
   CONFIRM_NEXT: { key: 'Enter', preventDefault: true },
   ESCAPE: { key: 'Escape', preventDefault: true },
-  PREV: { key: 'ArrowLeft', preventDefault: true },
-  NEXT: { key: 'ArrowRight', preventDefault: true },
+  PREV: { key: 'ArrowUp', preventDefault: true },
+  NEXT: { key: 'ArrowDown', preventDefault: true },
+  HOLD: { key: 'ArrowLeft', preventDefault: true },
+  CONFIRM: { key: 'ArrowRight', preventDefault: true },
   SAVE: { key: 's', ctrl: true, preventDefault: true },
 } as const;
