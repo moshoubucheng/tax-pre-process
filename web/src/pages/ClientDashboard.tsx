@@ -434,23 +434,54 @@ export default function ClientDashboard() {
       )}
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white rounded-lg shadow-sm p-4">
-          <p className="text-sm text-gray-500">今月の合計</p>
-          <p className="text-2xl font-bold text-gray-900">
-            ¥{(stats?.monthly_total || 0).toLocaleString()}
+      <div className="grid grid-cols-2 gap-4">
+        {/* Pending Items */}
+        <div
+          className={`rounded-lg shadow-sm p-4 border-l-4 ${
+            (stats?.pending_count || 0) > 0
+              ? 'bg-orange-50 border-orange-500'
+              : 'bg-green-50 border-green-500'
+          }`}
+        >
+          <div className="flex items-center gap-2 mb-2">
+            {(stats?.pending_count || 0) > 0 ? (
+              <svg className="w-5 h-5 text-orange-500" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+              </svg>
+            ) : (
+              <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+            )}
+            <p className="text-sm text-gray-600 font-medium">未処理残数</p>
+          </div>
+          <p className={`text-3xl font-bold ${(stats?.pending_count || 0) > 0 ? 'text-orange-600' : 'text-green-600'}`}>
+            {stats?.pending_count || 0}
+          </p>
+          <p className="text-xs text-gray-500 mt-1">
+            {(stats?.pending_count || 0) > 0 ? '確認待ちの取引' : 'すべて完了'}
           </p>
         </div>
-        <div className="bg-white rounded-lg shadow-sm p-4">
-          <p className="text-sm text-gray-500">確認済み</p>
-          <p className="text-2xl font-bold text-green-600">
-            {stats?.confirmed_count || 0}件
+
+        {/* On Hold Items */}
+        <div
+          className={`rounded-lg shadow-sm p-4 border-l-4 ${
+            (stats?.on_hold_count || 0) > 0
+              ? 'bg-yellow-50 border-yellow-500'
+              : 'bg-gray-50 border-gray-300'
+          }`}
+        >
+          <div className="flex items-center gap-2 mb-2">
+            <svg className={`w-5 h-5 ${(stats?.on_hold_count || 0) > 0 ? 'text-yellow-500' : 'text-gray-400'}`} fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+            </svg>
+            <p className="text-sm text-gray-600 font-medium">確認待ち</p>
+          </div>
+          <p className={`text-3xl font-bold ${(stats?.on_hold_count || 0) > 0 ? 'text-yellow-600' : 'text-gray-400'}`}>
+            {stats?.on_hold_count || 0}
           </p>
-        </div>
-        <div className="bg-white rounded-lg shadow-sm p-4">
-          <p className="text-sm text-gray-500">要確認</p>
-          <p className="text-2xl font-bold text-orange-600">
-            {stats?.pending_count || 0}件
+          <p className="text-xs text-gray-500 mt-1">
+            {(stats?.on_hold_count || 0) > 0 ? '回答が必要です' : '回答待ちなし'}
           </p>
         </div>
       </div>

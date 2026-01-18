@@ -27,14 +27,14 @@ admin.use('*', adminOnly);
 // GET /api/admin/stats - Get global admin stats
 admin.get('/stats', async (c) => {
   try {
-    // Get pending count (all transactions with status = 'pending')
+    // Get pending count (exclude admin company)
     const pendingResult = await c.env.DB.prepare(
-      `SELECT COUNT(*) as count FROM transactions WHERE status = 'pending'`
+      `SELECT COUNT(*) as count FROM transactions WHERE status = 'pending' AND company_id != 'comp_admin'`
     ).first<{ count: number }>();
 
-    // Get on_hold count (all transactions with status = 'on_hold')
+    // Get on_hold count (exclude admin company)
     const onHoldResult = await c.env.DB.prepare(
-      `SELECT COUNT(*) as count FROM transactions WHERE status = 'on_hold'`
+      `SELECT COUNT(*) as count FROM transactions WHERE status = 'on_hold' AND company_id != 'comp_admin'`
     ).first<{ count: number }>();
 
     // Get settlement alerts count
