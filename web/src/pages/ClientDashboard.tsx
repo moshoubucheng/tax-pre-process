@@ -804,8 +804,35 @@ export default function ClientDashboard() {
                         </div>
                       )}
 
+                      {/* Current Transaction Details (Admin's edits) */}
+                      <div className="bg-white border border-yellow-300 rounded-md p-3">
+                        <p className="text-xs text-gray-500 font-medium mb-2">管理者が設定した内容:</p>
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          <div>
+                            <span className="text-gray-500">日付:</span>
+                            <span className="ml-2 font-medium">{selectedTxn.transaction_date || '未設定'}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-500">金額:</span>
+                            <span className="ml-2 font-medium">¥{(selectedTxn.amount || 0).toLocaleString()}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-500">店舗名:</span>
+                            <span className="ml-2 font-medium">{selectedTxn.vendor_name || '未設定'}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-500">勘定科目:</span>
+                            <span className="ml-2 font-medium text-blue-600">{selectedTxn.account_debit || '未設定'}</span>
+                          </div>
+                          <div className="col-span-2">
+                            <span className="text-gray-500">税区分:</span>
+                            <span className="ml-2 font-medium">{selectedTxn.tax_category || '未設定'}</span>
+                          </div>
+                        </div>
+                      </div>
+
                       <p className="text-sm text-yellow-700">
-                        この取引の使途（何に使ったか）を教えてください。
+                        上記内容でよろしければ「確認完了」を、修正が必要な場合は下記に記入して「返信して修正」を押してください。
                       </p>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">店名/取引先 *</label>
