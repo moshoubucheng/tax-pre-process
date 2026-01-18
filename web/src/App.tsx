@@ -9,6 +9,7 @@ import Chat from './pages/Chat';
 import Documents from './pages/Documents';
 import AdminDocuments from './pages/AdminDocuments';
 import Settings from './pages/Settings';
+import ReviewStation from './pages/ReviewStation';
 import Layout from './components/layout/Layout';
 
 function PrivateRoute({ children, adminOnly = false }: { children: React.ReactNode; adminOnly?: boolean }) {
@@ -85,6 +86,12 @@ function AppRoutes() {
           <Layout>
             <Settings />
           </Layout>
+        </PrivateRoute>
+      } />
+
+      <Route path="/review/:companyId" element={
+        <PrivateRoute adminOnly>
+          <ReviewStation />
         </PrivateRoute>
       } />
 

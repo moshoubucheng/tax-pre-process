@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import ImageLightbox from '../components/ImageLightbox';
 
@@ -40,6 +41,7 @@ interface TransactionDetail {
 
 
 export default function AdminPanel() {
+  const navigate = useNavigate();
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState<string | null>(null);
@@ -504,7 +506,15 @@ export default function AdminPanel() {
                   <td className="px-6 py-4 whitespace-nowrap text-orange-600">
                     {company.pending_count}件
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right">
+                  <td className="px-6 py-4 whitespace-nowrap text-right space-x-3">
+                    {company.pending_count > 0 && (
+                      <button
+                        onClick={() => navigate(`/review/${company.id}`)}
+                        className="text-green-600 hover:text-green-800 text-sm"
+                      >
+                        審核モード
+                      </button>
+                    )}
                     <button
                       onClick={() => handleExport(company.id)}
                       disabled={exporting === company.id}
@@ -551,13 +561,23 @@ export default function AdminPanel() {
                   <span className="text-green-600">確認済: {company.confirmed_count}</span>
                   <span className="text-orange-600">要確認: {company.pending_count}</span>
                 </div>
-                <button
-                  onClick={() => handleExport(company.id)}
-                  disabled={exporting === company.id}
-                  className="text-primary-600 text-sm"
-                >
-                  CSV出力
-                </button>
+                <div className="flex gap-3">
+                  {company.pending_count > 0 && (
+                    <button
+                      onClick={() => navigate(`/review/${company.id}`)}
+                      className="text-green-600 text-sm"
+                    >
+                      審核
+                    </button>
+                  )}
+                  <button
+                    onClick={() => handleExport(company.id)}
+                    disabled={exporting === company.id}
+                    className="text-primary-600 text-sm"
+                  >
+                    CSV出力
+                  </button>
+                </div>
               </div>
             </div>
           ))}
@@ -719,6 +739,14 @@ export default function AdminPanel() {
                 )}
               </div>
               <div className="flex gap-2">
+                {selectedCompany.pending_count > 0 && (
+                  <button
+                    onClick={() => navigate(`/review/${selectedCompany.id}`)}
+                    className="px-4 py-2 bg-green-600 text-white rounded-md text-sm hover:bg-green-700"
+                  >
+                    審核モード
+                  </button>
+                )}
                 <button
                   onClick={() => handleExport(selectedCompany.id)}
                   disabled={exporting === selectedCompany.id}
