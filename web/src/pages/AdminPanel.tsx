@@ -24,6 +24,8 @@ interface Transaction {
   status: string;
   confidence: number;
   created_at: string;
+  company_name?: string;
+  company_id?: string;
 }
 
 interface TransactionDetail {
@@ -78,6 +80,11 @@ export default function AdminPanel() {
   // Transaction status filter
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'confirmed' | 'on_hold'>('all');
 
+  // Global view mode
+  const [globalView, setGlobalView] = useState<'none' | 'all_pending' | 'all_on_hold' | 'settlement_alerts'>('none');
+  const [globalTransactions, setGlobalTransactions] = useState<Transaction[]>([]);
+  const [loadingGlobal, setLoadingGlobal] = useState(false);
+
   useEffect(() => {
     loadCompanies();
   }, []);
@@ -91,6 +98,47 @@ export default function AdminPanel() {
     } finally {
       setLoading(false);
     }
+  }
+
+  // Global view functions
+  async function openGlobalView(viewType: 'all_pending' | 'all_on_hold') {
+    setGlobalView(viewType);
+    setLoadingGlobal(true);
+    setGlobalTransactions([]);
+
+    try {
+      // Load transactions from all companies with the specified status
+      const status = viewType === 'all_pending' ? 'pending' : 'on_hold';
+      const allTxns: Transaction[] = [];
+
+      for (const company of companies) {
+        const count = viewType === 'all_pending' ? company.pending_count : company.on_hold_count;
+        if (count > 0) {
+          const res = await api.get<{ data: Transaction[] }>(`/admin/companies/${company.id}/transactions?status=${status}`);
+          const txnsWithCompany = (res.data || []).map(t => ({
+            ...t,
+            company_name: company.name,
+            company_id: company.id,
+          }));
+          allTxns.push(...txnsWithCompany);
+        }
+      }
+
+      setGlobalTransactions(allTxns);
+    } catch (err) {
+      console.error('Failed to load global transactions:', err);
+    } finally {
+      setLoadingGlobal(false);
+    }
+  }
+
+  function openSettlementAlerts() {
+    setGlobalView('settlement_alerts');
+  }
+
+  function closeGlobalView() {
+    setGlobalView('none');
+    setGlobalTransactions([]);
   }
 
   function openSettlementModal(company: Company) {
@@ -367,6 +415,11 @@ export default function AdminPanel() {
     }
   }
 
+  // Computed totals
+  const totalPending = companies.reduce((sum, c) => sum + c.pending_count, 0);
+  const totalOnHold = companies.reduce((sum, c) => sum + c.on_hold_count, 0);
+  const settlementAlertCompanies = companies.filter(c => c.settlement_color !== 'normal');
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -376,6 +429,37 @@ export default function AdminPanel() {
           className="bg-primary-600 text-white px-4 py-2 rounded-md text-sm"
         >
           新規追加
+        </button>
+      </div>
+
+      {/* Summary Stats */}
+      <div className="grid grid-cols-3 gap-4">
+        <button
+          onClick={() => totalPending > 0 && openGlobalView('all_pending')}
+          className={`bg-white rounded-lg shadow-sm p-4 text-left ${totalPending > 0 ? 'hover:bg-orange-50 cursor-pointer' : ''}`}
+        >
+          <div className="text-sm text-gray-500">未処理残数</div>
+          <div className={`text-2xl font-bold ${totalPending > 0 ? 'text-orange-600' : 'text-gray-400'}`}>
+            {totalPending}件
+          </div>
+        </button>
+        <button
+          onClick={() => totalOnHold > 0 && openGlobalView('all_on_hold')}
+          className={`bg-white rounded-lg shadow-sm p-4 text-left ${totalOnHold > 0 ? 'hover:bg-yellow-50 cursor-pointer' : ''}`}
+        >
+          <div className="text-sm text-gray-500">確認待ち</div>
+          <div className={`text-2xl font-bold ${totalOnHold > 0 ? 'text-yellow-600' : 'text-gray-400'}`}>
+            {totalOnHold}件
+          </div>
+        </button>
+        <button
+          onClick={() => settlementAlertCompanies.length > 0 && openSettlementAlerts()}
+          className={`bg-white rounded-lg shadow-sm p-4 text-left ${settlementAlertCompanies.length > 0 ? 'hover:bg-red-50 cursor-pointer' : ''}`}
+        >
+          <div className="text-sm text-gray-500">決算アラート</div>
+          <div className={`text-2xl font-bold ${settlementAlertCompanies.length > 0 ? 'text-red-600' : 'text-gray-400'}`}>
+            {settlementAlertCompanies.length}社
+          </div>
         </button>
       </div>
 
@@ -997,6 +1081,177 @@ export default function AdminPanel() {
                 className="flex-1 py-2 bg-green-600 text-white rounded-md disabled:opacity-50"
               >
                 {confirmingSettlement ? '処理中...' : '確認完了'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Global View Modal - Pending/On Hold Transactions */}
+      {(globalView === 'all_pending' || globalView === 'all_on_hold') && (
+        <div className="fixed inset-0 bg-black/50 md:flex md:items-center md:justify-center md:p-4 z-50">
+          <div className="bg-white w-full h-full md:h-auto md:rounded-lg md:max-w-4xl md:max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="p-4 md:p-6 border-b border-gray-200 flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold">
+                  {globalView === 'all_pending' ? '全ての未処理残数' : '全ての確認待ち'}
+                </h2>
+                <div className="text-sm text-gray-600 mt-1">
+                  {globalTransactions.length}件
+                </div>
+              </div>
+              <button
+                onClick={closeGlobalView}
+                className="text-gray-500 hover:text-gray-700 text-2xl leading-none"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-auto p-6">
+              {loadingGlobal ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+                </div>
+              ) : globalTransactions.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  {globalView === 'all_pending' ? '未処理の取引はありません' : '確認待ちの取引はありません'}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {globalTransactions.map((txn) => (
+                    <div
+                      key={txn.id}
+                      className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 cursor-pointer"
+                      onClick={() => {
+                        closeGlobalView();
+                        const company = companies.find(c => c.id === txn.company_id);
+                        if (company) {
+                          openCompanyDetail(company, globalView === 'all_pending' ? 'pending' : 'on_hold');
+                        }
+                      }}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">
+                              {txn.company_name}
+                            </span>
+                            <span className="font-medium">{txn.vendor || '不明'}</span>
+                            <span className={`text-xs px-2 py-0.5 rounded-full ${
+                              txn.status === 'on_hold'
+                                ? 'bg-yellow-100 text-yellow-700'
+                                : 'bg-orange-100 text-orange-700'
+                            }`}>
+                              {txn.status === 'on_hold' ? '確認待ち' : '要確認'}
+                            </span>
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            <span>{txn.date}</span>
+                            <span className="mx-2">·</span>
+                            <span>{txn.account_category || '未分類'}</span>
+                          </div>
+                        </div>
+                        <div className="text-right flex items-center gap-3">
+                          <span className="font-semibold">¥{txn.amount.toLocaleString()}</span>
+                          <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="p-4 border-t border-gray-200 flex justify-end">
+              <button
+                onClick={closeGlobalView}
+                className="px-4 py-2 border border-gray-300 rounded-md text-sm"
+              >
+                閉じる
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Global View Modal - Settlement Alerts */}
+      {globalView === 'settlement_alerts' && (
+        <div className="fixed inset-0 bg-black/50 md:flex md:items-center md:justify-center md:p-4 z-50">
+          <div className="bg-white w-full h-full md:h-auto md:rounded-lg md:max-w-2xl md:max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="p-4 md:p-6 border-b border-gray-200 flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold">決算アラート</h2>
+                <div className="text-sm text-gray-600 mt-1">
+                  {settlementAlertCompanies.length}社
+                </div>
+              </div>
+              <button
+                onClick={closeGlobalView}
+                className="text-gray-500 hover:text-gray-700 text-2xl leading-none"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-auto p-6">
+              {settlementAlertCompanies.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  決算アラートはありません
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {settlementAlertCompanies.map((company) => (
+                    <div
+                      key={company.id}
+                      className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <span className={`font-medium ${getCompanyNameStyle(company.settlement_color)}`}>
+                            {company.name}
+                          </span>
+                          <span className={`text-xs px-2 py-0.5 rounded ${
+                            company.settlement_color === 'red'
+                              ? 'bg-red-100 text-red-700'
+                              : 'bg-yellow-100 text-yellow-700'
+                          }`}>
+                            {company.settlement_color === 'red' ? '期限超過' : '期限間近'}
+                          </span>
+                          {company.business_year_end && (
+                            <span className="text-sm text-gray-500">
+                              事業年度末: {company.business_year_end}
+                            </span>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => {
+                            closeGlobalView();
+                            openSettlementModal(company);
+                          }}
+                          className={`px-3 py-1 text-sm rounded ${
+                            company.settlement_color === 'red'
+                              ? 'bg-red-600 text-white hover:bg-red-700'
+                              : 'bg-yellow-500 text-white hover:bg-yellow-600'
+                          }`}
+                        >
+                          決算確認
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="p-4 border-t border-gray-200 flex justify-end">
+              <button
+                onClick={closeGlobalView}
+                className="px-4 py-2 border border-gray-300 rounded-md text-sm"
+              >
+                閉じる
               </button>
             </div>
           </div>
