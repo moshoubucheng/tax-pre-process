@@ -8,6 +8,7 @@ interface Company {
   name: string;
   pending_count: number;
   confirmed_count: number;
+  on_hold_count: number;
   monthly_total: number;
   settlement_color: 'normal' | 'yellow' | 'red';
   business_year_end: string | null;
@@ -19,12 +20,31 @@ interface AdminStats {
   settlement_alerts: number;
 }
 
+interface Transaction {
+  id: string;
+  company_id: string;
+  transaction_date: string | null;
+  amount: number | null;
+  vendor_name: string | null;
+  account_debit: string | null;
+  ai_confidence: number | null;
+  status: string;
+  company_name?: string;
+}
+
+type GlobalViewType = 'pending' | 'on_hold' | 'settlement' | null;
+
 export default function AdminHome() {
   const navigate = useNavigate();
   const { setSelectedClient } = useClientContext();
   const [companies, setCompanies] = useState<Company[]>([]);
   const [stats, setStats] = useState<AdminStats>({ pending_count: 0, on_hold_count: 0, settlement_alerts: 0 });
   const [loading, setLoading] = useState(true);
+
+  // Global view modal states
+  const [globalView, setGlobalView] = useState<GlobalViewType>(null);
+  const [globalTransactions, setGlobalTransactions] = useState<Transaction[]>([]);
+  const [loadingGlobal, setLoadingGlobal] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -56,6 +76,57 @@ export default function AdminHome() {
     navigate('/client/dashboard');
   }
 
+  // Open global view modal and fetch transactions from all companies
+  async function openGlobalView(viewType: 'pending' | 'on_hold') {
+    setGlobalView(viewType);
+    setLoadingGlobal(true);
+    setGlobalTransactions([]);
+
+    try {
+      // Fetch transactions from each company that has pending/on_hold items
+      const relevantCompanies = companies.filter(c =>
+        viewType === 'pending' ? c.pending_count > 0 : c.on_hold_count > 0
+      );
+
+      const allTransactions: Transaction[] = [];
+
+      for (const company of relevantCompanies) {
+        const res = await api.get<{ data: Transaction[] }>(
+          `/admin/companies/${company.id}/transactions?status=${viewType}`
+        );
+        const txns = (res.data || []).map(t => ({
+          ...t,
+          company_name: company.name
+        }));
+        allTransactions.push(...txns);
+      }
+
+      // Sort by date descending
+      allTransactions.sort((a, b) => {
+        const dateA = a.transaction_date || '';
+        const dateB = b.transaction_date || '';
+        return dateB.localeCompare(dateA);
+      });
+
+      setGlobalTransactions(allTransactions);
+    } catch (err) {
+      console.error('Failed to load transactions:', err);
+    } finally {
+      setLoadingGlobal(false);
+    }
+  }
+
+  // Open settlement alerts view
+  function openSettlementAlerts() {
+    setGlobalView('settlement');
+  }
+
+  // Close global view modal
+  function closeGlobalView() {
+    setGlobalView(null);
+    setGlobalTransactions([]);
+  }
+
   // Filter companies with alerts
   const redAlerts = companies.filter(c => c.settlement_color === 'red');
   const yellowAlerts = companies.filter(c => c.settlement_color === 'yellow');
@@ -77,7 +148,7 @@ export default function AdminHome() {
       <div className="grid grid-cols-3 gap-4">
         {/* Pending Items - Urgent Action */}
         <button
-          onClick={() => navigate('/clients')}
+          onClick={() => openGlobalView('pending')}
           className={`bg-white rounded-lg shadow-sm p-4 text-left hover:shadow-md transition-shadow ${
             stats.pending_count > 0 ? 'ring-2 ring-orange-500' : ''
           }`}
@@ -103,8 +174,9 @@ export default function AdminHome() {
         </button>
 
         {/* On Hold / Client Queries */}
-        <div
-          className="bg-white rounded-lg shadow-sm p-4 relative group"
+        <button
+          onClick={() => openGlobalView('on_hold')}
+          className="bg-white rounded-lg shadow-sm p-4 text-left hover:shadow-md transition-shadow relative group"
           title="クライアントの回答待ち"
         >
           <div className="flex items-center gap-2 mb-2">
@@ -121,14 +193,11 @@ export default function AdminHome() {
           <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
             クライアントの回答待ち
           </div>
-        </div>
+        </button>
 
         {/* Settlement Alerts */}
         <button
-          onClick={() => {
-            const alertSection = document.getElementById('settlement-alerts');
-            alertSection?.scrollIntoView({ behavior: 'smooth' });
-          }}
+          onClick={() => openSettlementAlerts()}
           className={`bg-white rounded-lg shadow-sm p-4 text-left hover:shadow-md transition-shadow ${
             stats.settlement_alerts > 0 ? 'ring-2 ring-red-500' : ''
           }`}
@@ -257,6 +326,168 @@ export default function AdminHome() {
           </svg>
           <p className="text-green-800 font-semibold">すべて完了しています</p>
           <p className="text-green-600 text-sm mt-1">確認待ちの取引やアラートはありません</p>
+        </div>
+      )}
+
+      {/* Global View Modal - Pending/On Hold Transactions */}
+      {(globalView === 'pending' || globalView === 'on_hold') && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[80vh] overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b">
+              <h2 className="text-lg font-semibold">
+                {globalView === 'pending' ? '全ての未処理残数' : '全ての確認待ち'}
+                <span className="ml-2 text-sm text-gray-500">
+                  ({globalTransactions.length}件)
+                </span>
+              </h2>
+              <button
+                onClick={closeGlobalView}
+                className="p-2 hover:bg-gray-100 rounded-full"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="overflow-auto max-h-[calc(80vh-60px)]">
+              {loadingGlobal ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+                </div>
+              ) : globalTransactions.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  データがありません
+                </div>
+              ) : (
+                <table className="w-full">
+                  <thead className="bg-gray-50 sticky top-0">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">顧問先</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">日付</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">店舗名</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500">金額</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">勘定科目</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500">信頼度</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {globalTransactions.map((txn) => (
+                      <tr key={txn.id} className="hover:bg-gray-50">
+                        <td className="px-4 py-3 text-sm font-medium text-primary-600">
+                          {txn.company_name || '不明'}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-900">
+                          {txn.transaction_date || '-'}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-900">
+                          {txn.vendor_name || '-'}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-900 text-right">
+                          {txn.amount != null ? `¥${txn.amount.toLocaleString()}` : '-'}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-900">
+                          {txn.account_debit || '-'}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-right">
+                          {txn.ai_confidence != null ? (
+                            <span className={txn.ai_confidence >= 80 ? 'text-green-600' : 'text-orange-600'}>
+                              {Math.round(txn.ai_confidence)}%
+                            </span>
+                          ) : '-'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Global View Modal - Settlement Alerts */}
+      {globalView === 'settlement' && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[80vh] overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b">
+              <h2 className="text-lg font-semibold">
+                全ての決算アラート
+                <span className="ml-2 text-sm text-gray-500">
+                  ({redAlerts.length + yellowAlerts.length}社)
+                </span>
+              </h2>
+              <button
+                onClick={closeGlobalView}
+                className="p-2 hover:bg-gray-100 rounded-full"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="overflow-auto max-h-[calc(80vh-60px)] p-4 space-y-4">
+              {/* Red Alerts */}
+              {redAlerts.length > 0 && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                  <h3 className="font-semibold text-red-800 mb-3 flex items-center gap-2">
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    決算期限超過 ({redAlerts.length}社)
+                  </h3>
+                  <div className="space-y-2">
+                    {redAlerts.map((company) => (
+                      <button
+                        key={company.id}
+                        onClick={() => {
+                          closeGlobalView();
+                          handleSelectClient(company);
+                        }}
+                        className="w-full flex items-center justify-between p-3 bg-white rounded-lg hover:bg-red-100 transition-colors"
+                      >
+                        <span className="font-medium text-red-700">{company.name}</span>
+                        <span className="text-sm text-red-600">決算月: {company.business_year_end}月</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Yellow Alerts */}
+              {yellowAlerts.length > 0 && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <h3 className="font-semibold text-yellow-800 mb-3 flex items-center gap-2">
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    決算期限接近 ({yellowAlerts.length}社)
+                  </h3>
+                  <div className="space-y-2">
+                    {yellowAlerts.map((company) => (
+                      <button
+                        key={company.id}
+                        onClick={() => {
+                          closeGlobalView();
+                          handleSelectClient(company);
+                        }}
+                        className="w-full flex items-center justify-between p-3 bg-white rounded-lg hover:bg-yellow-100 transition-colors"
+                      >
+                        <span className="font-medium text-yellow-700">{company.name}</span>
+                        <span className="text-sm text-yellow-600">決算月: {company.business_year_end}月</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* No Alerts */}
+              {redAlerts.length === 0 && yellowAlerts.length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  決算アラートはありません
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>
