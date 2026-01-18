@@ -25,6 +25,15 @@ interface TransactionDetail {
   image_key: string;
 }
 
+interface Message {
+  id: string;
+  transaction_id: string;
+  user_id: string;
+  role: 'admin' | 'client';
+  message: string;
+  created_at: string;
+}
+
 export default function ReviewStation() {
   const { companyId } = useParams<{ companyId: string }>();
   const navigate = useNavigate();
@@ -41,6 +50,9 @@ export default function ReviewStation() {
   const [reverting, setReverting] = useState(false);
   const [showHoldModal, setShowHoldModal] = useState(false);
   const [adminNote, setAdminNote] = useState('');
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [sendingMessage, setSendingMessage] = useState(false);
 
   // Load company and transactions
   useEffect(() => {
@@ -89,11 +101,16 @@ export default function ReviewStation() {
   async function loadTransactionDetail(id: string) {
     setLoadingDetail(true);
     try {
-      const res = await api.get<{ data: TransactionDetail }>(`/transactions/${id}`);
-      setSelectedTransaction(res.data);
+      const [txnRes, msgRes] = await Promise.all([
+        api.get<{ data: TransactionDetail }>(`/transactions/${id}`),
+        api.get<{ data: Message[] }>(`/transactions/${id}/messages`),
+      ]);
+      setSelectedTransaction(txnRes.data);
+      setMessages(msgRes.data || []);
     } catch (err) {
       console.error('Failed to load transaction detail:', err);
       setSelectedTransaction(null);
+      setMessages([]);
     } finally {
       setLoadingDetail(false);
     }
@@ -271,10 +288,18 @@ export default function ReviewStation() {
     if (!selectedId) return;
     setSaving(true);
     try {
+      // Set status to on_hold
       await api.put(`/transactions/${selectedId}`, {
         status: 'on_hold',
-        admin_note: adminNote || null,
       });
+
+      // Send message if provided
+      if (adminNote.trim()) {
+        await api.post(`/transactions/${selectedId}/messages`, {
+          message: adminNote.trim(),
+        });
+      }
+
       // Update local state
       setTransactions((prev) =>
         prev.map((t) =>
@@ -292,6 +317,23 @@ export default function ReviewStation() {
       alert(err instanceof Error ? err.message : '確認依頼に失敗しました');
     } finally {
       setSaving(false);
+    }
+  }
+
+  // Send message to client
+  async function sendMessage() {
+    if (!selectedId || !newMessage.trim()) return;
+    setSendingMessage(true);
+    try {
+      const res = await api.post<{ data: Message[] }>(`/transactions/${selectedId}/messages`, {
+        message: newMessage.trim(),
+      });
+      setMessages(res.data || []);
+      setNewMessage('');
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'メッセージの送信に失敗しました');
+    } finally {
+      setSendingMessage(false);
     }
   }
 
@@ -420,28 +462,84 @@ export default function ReviewStation() {
               </div>
 
               {/* Form Panel */}
-              <div className="lg:w-96 bg-white border-t lg:border-t-0 lg:border-l border-gray-200 flex-shrink-0 overflow-auto max-h-[50vh] lg:max-h-full">
+              <div className="lg:w-96 bg-white border-t lg:border-t-0 lg:border-l border-gray-200 flex-shrink-0 overflow-auto max-h-[50vh] lg:max-h-full flex flex-col">
                 {loadingDetail ? (
                   <div className="flex items-center justify-center h-full">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
                   </div>
                 ) : (
-                  <TransactionForm
-                    data={{
-                      transaction_date: selectedTransaction.transaction_date,
-                      amount: selectedTransaction.amount,
-                      vendor_name: selectedTransaction.vendor_name,
-                      account_debit: selectedTransaction.account_debit,
-                      tax_category: selectedTransaction.tax_category,
-                    }}
-                    aiConfidence={selectedTransaction.ai_confidence}
-                    status={selectedTransaction.status}
-                    saving={saving}
-                    onSave={handleSave}
-                    onConfirm={handleConfirm}
-                    onRevert={() => setShowRevertModal(true)}
-                    onHold={handleHold}
-                  />
+                  <>
+                    <TransactionForm
+                      data={{
+                        transaction_date: selectedTransaction.transaction_date,
+                        amount: selectedTransaction.amount,
+                        vendor_name: selectedTransaction.vendor_name,
+                        account_debit: selectedTransaction.account_debit,
+                        tax_category: selectedTransaction.tax_category,
+                      }}
+                      aiConfidence={selectedTransaction.ai_confidence}
+                      status={selectedTransaction.status}
+                      saving={saving}
+                      onSave={handleSave}
+                      onConfirm={handleConfirm}
+                      onRevert={() => setShowRevertModal(true)}
+                      onHold={handleHold}
+                    />
+
+                    {/* Messages Section */}
+                    {messages.length > 0 && (
+                      <div className="border-t border-gray-200 p-3">
+                        <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-1">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                          </svg>
+                          対話履歴
+                        </h4>
+                        <div className="space-y-2 max-h-40 overflow-auto">
+                          {messages.map((msg) => (
+                            <div
+                              key={msg.id}
+                              className={`p-2 rounded-lg text-sm ${
+                                msg.role === 'admin'
+                                  ? 'bg-blue-50 text-blue-800 ml-4'
+                                  : 'bg-green-50 text-green-800 mr-4'
+                              }`}
+                            >
+                              <div className="flex items-center gap-1 text-xs opacity-70 mb-1">
+                                <span>{msg.role === 'admin' ? '管理者' : 'お客様'}</span>
+                                <span>·</span>
+                                <span>{new Date(msg.created_at).toLocaleString('ja-JP', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                              </div>
+                              <p>{msg.message}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Quick Message Input (for on_hold transactions) */}
+                    {selectedTransaction.status === 'on_hold' && (
+                      <div className="border-t border-gray-200 p-3">
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={newMessage}
+                            onChange={(e) => setNewMessage(e.target.value)}
+                            placeholder="メッセージを入力..."
+                            className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm"
+                            onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
+                          />
+                          <button
+                            onClick={sendMessage}
+                            disabled={sendingMessage || !newMessage.trim()}
+                            className="px-3 py-2 bg-blue-600 text-white rounded-md text-sm disabled:opacity-50"
+                          >
+                            {sendingMessage ? '...' : '送信'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </>

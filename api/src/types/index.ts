@@ -44,6 +44,15 @@ export interface Transaction {
   created_at: string;
 }
 
+export interface TransactionMessage {
+  id: string;
+  transaction_id: string;
+  user_id: string;
+  role: 'admin' | 'client';
+  message: string;
+  created_at: string;
+}
+
 export interface CompanyDocuments {
   id: string;
   company_id: string;

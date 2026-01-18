@@ -48,6 +48,15 @@ interface TransactionDetail {
   created_at: string;
 }
 
+interface Message {
+  id: string;
+  transaction_id: string;
+  user_id: string;
+  role: 'admin' | 'client';
+  message: string;
+  created_at: string;
+}
+
 const ACCOUNT_OPTIONS = [
   '旅費交通費',
   '接待交際費',
@@ -82,6 +91,10 @@ export default function ClientDashboard() {
   // Transaction detail modal
   const [selectedTxn, setSelectedTxn] = useState<TransactionDetail | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
+
+  // Messages
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [newMessage, setNewMessage] = useState('');
 
   // Edit mode
   const [isEditing, setIsEditing] = useState(false);
@@ -166,9 +179,15 @@ export default function ClientDashboard() {
 
   async function openTransactionDetail(id: string) {
     setLoadingDetail(true);
+    setMessages([]);
+    setNewMessage('');
     try {
-      const res = await api.get<{ data: TransactionDetail }>(`/transactions/${id}`);
-      setSelectedTxn(res.data);
+      const [txnRes, msgRes] = await Promise.all([
+        api.get<{ data: TransactionDetail }>(`/transactions/${id}`),
+        api.get<{ data: Message[] }>(`/transactions/${id}/messages`),
+      ]);
+      setSelectedTxn(txnRes.data);
+      setMessages(msgRes.data || []);
     } catch (err) {
       console.error('Failed to load transaction:', err);
       alert('取引情報の取得に失敗しました');
@@ -248,11 +267,20 @@ export default function ClientDashboard() {
 
     setReplying(true);
     try {
-      await api.put(`/transactions/${selectedTxn.id}`, {
-        description: editForm.description,
-        vendor_name: editForm.vendor_name,
-        reply: true, // This triggers status change to pending
-      });
+      // First update vendor_name if provided
+      if (editForm.vendor_name) {
+        await api.put(`/transactions/${selectedTxn.id}`, {
+          vendor_name: editForm.vendor_name,
+        });
+      }
+
+      // Send message via API (this also changes status to pending)
+      const messageToSend = editForm.description.trim() || newMessage.trim();
+      if (messageToSend) {
+        await api.post(`/transactions/${selectedTxn.id}/messages`, {
+          message: messageToSend,
+        });
+      }
 
       // Remove from on_hold list
       setOnHoldList(onHoldList.filter(t => t.id !== selectedTxn.id));
@@ -685,7 +713,7 @@ export default function ClientDashboard() {
                     </div>
                   </div>
 
-                  {/* On Hold Reply Form */}
+                  {/* On Hold Reply Form with Message Thread */}
                   {selectedTxn.status === 'on_hold' && (
                     <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 space-y-3">
                       <div className="flex items-center gap-2 text-yellow-800">
@@ -694,13 +722,49 @@ export default function ClientDashboard() {
                         </svg>
                         <span className="font-semibold">確認依頼</span>
                       </div>
-                      {/* Admin Note Display */}
-                      {selectedTxn.admin_note && (
+
+                      {/* Message Thread */}
+                      {messages.length > 0 && (
+                        <div className="bg-white border border-yellow-300 rounded-md p-3 space-y-3 max-h-48 overflow-y-auto">
+                          <p className="text-xs text-gray-500 font-medium">対話履歴:</p>
+                          {messages.map((msg) => (
+                            <div
+                              key={msg.id}
+                              className={`flex ${msg.role === 'client' ? 'justify-end' : 'justify-start'}`}
+                            >
+                              <div
+                                className={`max-w-[80%] rounded-lg px-3 py-2 ${
+                                  msg.role === 'client'
+                                    ? 'bg-blue-100 text-blue-800'
+                                    : 'bg-gray-100 text-gray-800'
+                                }`}
+                              >
+                                <p className="text-xs text-gray-500 mb-1">
+                                  {msg.role === 'admin' ? '管理者' : 'あなた'}
+                                  <span className="ml-2">
+                                    {new Date(msg.created_at).toLocaleString('ja-JP', {
+                                      month: 'short',
+                                      day: 'numeric',
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                    })}
+                                  </span>
+                                </p>
+                                <p className="text-sm whitespace-pre-wrap">{msg.message}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Admin Note Display (fallback for old format) */}
+                      {selectedTxn.admin_note && messages.length === 0 && (
                         <div className="bg-white border border-yellow-300 rounded-md p-3">
                           <p className="text-xs text-gray-500 mb-1">管理者からのメッセージ:</p>
                           <p className="text-sm text-gray-800">{selectedTxn.admin_note}</p>
                         </div>
                       )}
+
                       <p className="text-sm text-yellow-700">
                         この取引の使途（何に使ったか）を教えてください。
                       </p>
@@ -840,6 +904,42 @@ export default function ClientDashboard() {
                           }`}>
                             {selectedTxn.ai_confidence}%
                           </span>
+                        </div>
+                      )}
+
+                      {/* Message History for pending/confirmed transactions */}
+                      {messages.length > 0 && (
+                        <div className="mt-4 pt-3 border-t border-gray-200">
+                          <p className="text-sm font-medium text-gray-700 mb-2">対話履歴</p>
+                          <div className="space-y-2 max-h-40 overflow-y-auto">
+                            {messages.map((msg) => (
+                              <div
+                                key={msg.id}
+                                className={`flex ${msg.role === 'client' ? 'justify-end' : 'justify-start'}`}
+                              >
+                                <div
+                                  className={`max-w-[80%] rounded-lg px-3 py-2 ${
+                                    msg.role === 'client'
+                                      ? 'bg-blue-100 text-blue-800'
+                                      : 'bg-gray-100 text-gray-800'
+                                  }`}
+                                >
+                                  <p className="text-xs text-gray-500 mb-1">
+                                    {msg.role === 'admin' ? '管理者' : 'あなた'}
+                                    <span className="ml-2">
+                                      {new Date(msg.created_at).toLocaleString('ja-JP', {
+                                        month: 'short',
+                                        day: 'numeric',
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                      })}
+                                    </span>
+                                  </p>
+                                  <p className="text-sm whitespace-pre-wrap">{msg.message}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       )}
                     </div>

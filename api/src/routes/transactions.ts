@@ -6,7 +6,13 @@ import {
   getTransactionsByCompany,
   updateTransaction,
   deleteTransaction,
+  getMessagesByTransactionId,
+  createTransactionMessage,
 } from '../db/queries';
+
+function generateId(prefix: string): string {
+  return `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+}
 
 const transactions = new Hono<{ Bindings: Env }>();
 
@@ -338,6 +344,77 @@ transactions.delete('/:id', async (c) => {
   } catch (error) {
     console.error('Delete transaction error:', error);
     return c.json({ error: '取引の削除に失敗しました' }, 500);
+  }
+});
+
+// GET /api/transactions/:id/messages - Get messages for a transaction
+transactions.get('/:id/messages', async (c) => {
+  try {
+    const user = c.get('user');
+    const id = c.req.param('id');
+
+    const transaction = await getTransactionById(c.env.DB, id);
+
+    if (!transaction) {
+      return c.json({ error: '取引が見つかりません' }, 404);
+    }
+
+    // Check access permission
+    if (user.role !== 'admin' && transaction.company_id !== user.company_id) {
+      return c.json({ error: 'アクセス権限がありません' }, 403);
+    }
+
+    const messages = await getMessagesByTransactionId(c.env.DB, id);
+    return c.json({ data: messages });
+  } catch (error) {
+    console.error('Get messages error:', error);
+    return c.json({ error: 'メッセージの取得に失敗しました' }, 500);
+  }
+});
+
+// POST /api/transactions/:id/messages - Add message to a transaction
+transactions.post('/:id/messages', async (c) => {
+  try {
+    const user = c.get('user');
+    const id = c.req.param('id');
+    const body = await c.req.json();
+
+    if (!body.message || typeof body.message !== 'string' || body.message.trim() === '') {
+      return c.json({ error: 'メッセージを入力してください' }, 400);
+    }
+
+    const transaction = await getTransactionById(c.env.DB, id);
+
+    if (!transaction) {
+      return c.json({ error: '取引が見つかりません' }, 404);
+    }
+
+    // Check access permission
+    if (user.role !== 'admin' && transaction.company_id !== user.company_id) {
+      return c.json({ error: 'アクセス権限がありません' }, 403);
+    }
+
+    // Create message
+    const messageId = generateId('msg');
+    await createTransactionMessage(c.env.DB, {
+      id: messageId,
+      transaction_id: id,
+      user_id: user.sub,
+      role: user.role,
+      message: body.message.trim(),
+    });
+
+    // If client is replying to on_hold, optionally change status to pending
+    if (user.role === 'client' && transaction.status === 'on_hold') {
+      await updateTransaction(c.env.DB, id, { status: 'pending' });
+    }
+
+    // Return all messages
+    const messages = await getMessagesByTransactionId(c.env.DB, id);
+    return c.json({ data: messages });
+  } catch (error) {
+    console.error('Add message error:', error);
+    return c.json({ error: 'メッセージの送信に失敗しました' }, 500);
   }
 });
 

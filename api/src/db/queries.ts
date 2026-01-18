@@ -1,4 +1,4 @@
-import type { Company, User, Transaction, CompanyDocuments } from '../types';
+import type { Company, User, Transaction, CompanyDocuments, TransactionMessage } from '../types';
 
 // User queries
 export async function getUserByEmail(db: D1Database, email: string): Promise<User | null> {
@@ -430,5 +430,29 @@ export async function updateCompanyDocuments(
   await db
     .prepare(`UPDATE company_documents SET ${fields.join(', ')} WHERE company_id = ?`)
     .bind(...values)
+    .run();
+}
+
+// Transaction message queries
+export async function getMessagesByTransactionId(
+  db: D1Database,
+  transactionId: string
+): Promise<TransactionMessage[]> {
+  const result = await db
+    .prepare('SELECT * FROM transaction_messages WHERE transaction_id = ? ORDER BY created_at ASC')
+    .bind(transactionId)
+    .all<TransactionMessage>();
+  return result.results;
+}
+
+export async function createTransactionMessage(
+  db: D1Database,
+  data: Omit<TransactionMessage, 'created_at'>
+): Promise<void> {
+  await db
+    .prepare(
+      'INSERT INTO transaction_messages (id, transaction_id, user_id, role, message) VALUES (?, ?, ?, ?, ?)'
+    )
+    .bind(data.id, data.transaction_id, data.user_id, data.role, data.message)
     .run();
 }
