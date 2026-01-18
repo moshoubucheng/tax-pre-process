@@ -216,6 +216,8 @@ transactions.put('/:id', async (c) => {
     if (body.account_debit !== undefined) updateData.account_debit = body.account_debit;
     if (body.account_credit !== undefined) updateData.account_credit = body.account_credit;
     if (body.tax_category !== undefined) updateData.tax_category = body.tax_category;
+    if (body.tax_rate !== undefined) updateData.tax_rate = body.tax_rate;
+    if (body.invoice_number !== undefined) updateData.invoice_number = body.invoice_number;
     if (body.description !== undefined) updateData.description = body.description;
 
     // Admin can change status and set admin_note
@@ -244,6 +246,9 @@ transactions.put('/:id', async (c) => {
     await updateTransaction(c.env.DB, id, updateData);
 
     const updated = await getTransactionById(c.env.DB, id);
+    if (!updated) {
+      return c.json({ error: '取引が見つかりません' }, 404);
+    }
     return c.json({ data: updated });
   } catch (error) {
     console.error('Update transaction error:', error);

@@ -10,14 +10,16 @@ interface Company {
 
 interface Transaction {
   id: string;
+  type?: 'expense' | 'income';
   transaction_date: string | null;
   amount: number | null;
   vendor_name: string | null;
   account_debit: string | null;
-  account_credit: string;
+  account_credit: string | null;
   tax_category: string | null;
+  tax_rate: number | null;
   ai_confidence: number | null;
-  status: 'pending' | 'confirmed';
+  status: 'pending' | 'confirmed' | 'on_hold';
   image_key: string;
   created_at: string;
 }

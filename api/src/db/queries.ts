@@ -164,8 +164,8 @@ export async function createTransaction(
       `INSERT INTO transactions
        (id, company_id, uploaded_by, image_key, image_uploaded_at, type, transaction_date,
         amount, vendor_name, account_debit, account_credit, tax_category, tax_rate, invoice_number,
-        ai_confidence, ai_raw_response, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        ai_confidence, ai_raw_response, description, admin_note, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .bind(
       txn.id,
@@ -184,6 +184,8 @@ export async function createTransaction(
       txn.invoice_number,
       txn.ai_confidence,
       txn.ai_raw_response,
+      txn.description,
+      txn.admin_note,
       txn.status
     )
     .run();
