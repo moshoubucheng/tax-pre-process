@@ -19,11 +19,20 @@ const transactions = new Hono<{ Bindings: Env }>();
 // Apply auth middleware to all routes
 transactions.use('*', authMiddleware);
 
-// GET /api/transactions - List transactions
+// GET /api/transactions - List transactions with search/filter support
 transactions.get('/', async (c) => {
   try {
     const user = c.get('user');
-    const { status, limit, offset } = c.req.query();
+    const {
+      status,
+      limit,
+      offset,
+      search,
+      start_date,
+      end_date,
+      min_amount,
+      max_amount,
+    } = c.req.query();
 
     // Clients can only see their company's transactions
     // Admins need to specify company_id in query
@@ -43,8 +52,13 @@ transactions.get('/', async (c) => {
 
     const transactions = await getTransactionsByCompany(c.env.DB, companyId, {
       status: status || undefined,
-      limit: limit ? parseInt(limit) : 50,
+      limit: limit ? parseInt(limit) : 100,
       offset: offset ? parseInt(offset) : 0,
+      search: search || undefined,
+      startDate: start_date || undefined,
+      endDate: end_date || undefined,
+      minAmount: min_amount ? parseInt(min_amount) : undefined,
+      maxAmount: max_amount ? parseInt(max_amount) : undefined,
     });
 
     return c.json({ data: transactions });
