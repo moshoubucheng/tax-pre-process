@@ -1,12 +1,20 @@
 import { useState, useEffect, useImperativeHandle, forwardRef } from 'react';
-import { ACCOUNT_DEBIT_OPTIONS, TAX_CATEGORY_OPTIONS } from '../../constants/accounts';
+import {
+  TransactionType,
+  getAccountDebitOptions,
+  getAccountCreditOptions,
+  getTaxCategoryOptions,
+  TAX_RATE_OPTIONS,
+} from '../../constants/accounts';
 
 export interface TransactionFormData {
   transaction_date: string | null;
   amount: number | null;
   vendor_name: string | null;
   account_debit: string | null;
+  account_credit: string | null;
   tax_category: string | null;
+  tax_rate: number | null;
   invoice_number: string | null;
 }
 
@@ -19,6 +27,7 @@ export type SelectedAction = 'none' | 'hold' | 'confirm';
 
 interface TransactionFormProps {
   data: TransactionFormData;
+  type: TransactionType;
   aiConfidence: number | null;
   lowConfidenceFields?: string[];
   status: 'pending' | 'confirmed' | 'on_hold';
@@ -32,6 +41,7 @@ interface TransactionFormProps {
 
 const TransactionForm = forwardRef<TransactionFormRef, TransactionFormProps>(({
   data,
+  type,
   aiConfidence,
   lowConfidenceFields = [],
   status,
@@ -42,6 +52,10 @@ const TransactionForm = forwardRef<TransactionFormRef, TransactionFormProps>(({
   onRevert,
   onHold,
 }, ref) => {
+  // Get type-specific options
+  const accountDebitOptions = getAccountDebitOptions(type);
+  const accountCreditOptions = getAccountCreditOptions(type);
+  const taxCategoryOptions = getTaxCategoryOptions(type);
   const [formData, setFormData] = useState<TransactionFormData>(data);
   const [hasChanges, setHasChanges] = useState(false);
 
@@ -162,10 +176,20 @@ const TransactionForm = forwardRef<TransactionFormRef, TransactionFormProps>(({
           />
         </div>
 
+        {/* Type Indicator */}
+        <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${
+          type === 'income' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+        }`}>
+          <span className="text-lg">{type === 'income' ? '+' : '▲'}</span>
+          <span className="text-sm font-medium">
+            {type === 'income' ? '売上 (収入)' : '経費 (支出)'}
+          </span>
+        </div>
+
         {/* Account Debit Field */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            勘定科目
+            {type === 'income' ? '借方科目' : '勘定科目（借方）'}
             {isLowConfidence('account_debit') && (
               <span className="ml-1 text-orange-500">*</span>
             )}
@@ -176,9 +200,53 @@ const TransactionForm = forwardRef<TransactionFormRef, TransactionFormProps>(({
             className={fieldClass('account_debit')}
           >
             <option value="">選択してください</option>
-            {ACCOUNT_DEBIT_OPTIONS.map((option) => (
+            {accountDebitOptions.map((option) => (
               <option key={option} value={option}>
                 {option}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Account Credit Field */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            {type === 'income' ? '貸方科目' : '勘定科目（貸方）'}
+            {isLowConfidence('account_credit') && (
+              <span className="ml-1 text-orange-500">*</span>
+            )}
+          </label>
+          <select
+            value={formData.account_credit || ''}
+            onChange={(e) => handleChange('account_credit', e.target.value || null)}
+            className={fieldClass('account_credit')}
+          >
+            <option value="">選択してください</option>
+            {accountCreditOptions.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Tax Rate Field */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            税率
+            {isLowConfidence('tax_rate') && (
+              <span className="ml-1 text-orange-500">*</span>
+            )}
+          </label>
+          <select
+            value={formData.tax_rate ?? ''}
+            onChange={(e) => handleChange('tax_rate', e.target.value ? Number(e.target.value) : null)}
+            className={fieldClass('tax_rate')}
+          >
+            <option value="">選択してください</option>
+            {TAX_RATE_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
               </option>
             ))}
           </select>
@@ -198,7 +266,7 @@ const TransactionForm = forwardRef<TransactionFormRef, TransactionFormProps>(({
             className={fieldClass('tax_category')}
           >
             <option value="">選択してください</option>
-            {TAX_CATEGORY_OPTIONS.map((option) => (
+            {taxCategoryOptions.map((option) => (
               <option key={option} value={option}>
                 {option}
               </option>

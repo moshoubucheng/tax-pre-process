@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import type { Env } from '../types';
 import { authMiddleware } from '../middleware/auth';
 import { generateId } from '../services/password';
-import { extractReceiptData, validateImageType } from '../services/ai-ocr';
+import { extractReceiptData, validateImageType, TransactionType } from '../services/ai-ocr';
 import { createTransaction, getTransactionById } from '../db/queries';
 import { verifyJWT } from '../services/jwt';
 
@@ -40,7 +40,7 @@ function generateR2Key(mimeType: string): { key: string; timestamp: string } {
   return { key, timestamp };
 }
 
-// POST /api/upload - Upload receipt image
+// POST /api/upload - Upload receipt/invoice image with AI OCR
 upload.post('/', async (c) => {
   try {
     const user = c.get('user');
@@ -52,6 +52,11 @@ upload.post('/', async (c) => {
     // Parse multipart form data
     const formData = await c.req.formData();
     const fileEntry = formData.get('file');
+    const typeEntry = formData.get('type') as string | null;
+
+    // Validate and get transaction type (default: expense)
+    const transactionType: TransactionType =
+      typeEntry === 'income' ? 'income' : 'expense';
 
     if (!fileEntry || typeof fileEntry === 'string') {
       return c.json({ error: 'ファイルが見つかりません' }, 400);
@@ -85,14 +90,16 @@ upload.post('/', async (c) => {
         uploadedAt: timestamp,
         uploadedBy: user.sub,
         originalName: file.name,
+        transactionType: transactionType,
       },
     });
 
-    // Extract receipt data using Claude
+    // Extract receipt/invoice data using Claude (with type-specific prompt)
     const aiResult = await extractReceiptData(
       c.env.CLAUDE_API_KEY,
       arrayBuffer,
-      mimeType
+      mimeType,
+      transactionType
     );
 
     // Create transaction record
@@ -103,12 +110,14 @@ upload.post('/', async (c) => {
       uploaded_by: user.sub,
       image_key: key,
       image_uploaded_at: timestamp,
+      type: transactionType,
       transaction_date: aiResult.transaction_date,
       amount: aiResult.amount,
       vendor_name: aiResult.vendor_name,
       account_debit: aiResult.account_debit,
-      account_credit: '現金',
+      account_credit: aiResult.account_credit || (transactionType === 'income' ? '売上高' : '現金'),
       tax_category: aiResult.tax_category,
+      tax_rate: aiResult.tax_rate,
       invoice_number: aiResult.invoice_number,
       ai_confidence: aiResult.confidence,
       ai_raw_response: aiResult.raw_response || null,
@@ -120,12 +129,15 @@ upload.post('/', async (c) => {
     return c.json({
       transaction_id: transactionId,
       image_key: key,
+      type: transactionType,
       ai_result: {
         transaction_date: aiResult.transaction_date,
         amount: aiResult.amount,
         vendor_name: aiResult.vendor_name,
         account_debit: aiResult.account_debit,
+        account_credit: aiResult.account_credit,
         tax_category: aiResult.tax_category,
+        tax_rate: aiResult.tax_rate,
         invoice_number: aiResult.invoice_number,
         confidence: aiResult.confidence,
       },
@@ -167,18 +179,25 @@ upload.post('/manual', async (c) => {
     }
 
     // Get form fields
+    const typeEntry = formData.get('type') as string | null;
+    const transactionType: TransactionType =
+      typeEntry === 'income' ? 'income' : 'expense';
     const transaction_date = formData.get('transaction_date') as string;
     const amount = formData.get('amount') as string;
     const vendor_name = formData.get('vendor_name') as string;
     const account_debit = formData.get('account_debit') as string;
     const account_credit = formData.get('account_credit') as string;
     const tax_category = formData.get('tax_category') as string;
+    const tax_rate_str = formData.get('tax_rate') as string;
     const invoice_number = formData.get('invoice_number') as string;
 
     // Validate required fields
     if (!transaction_date || !amount) {
       return c.json({ error: '日付と金額は必須です' }, 400);
     }
+
+    // Parse tax_rate (default 10)
+    const tax_rate = tax_rate_str ? parseInt(tax_rate_str) : 10;
 
     // Read file data
     const arrayBuffer = await file.arrayBuffer();
@@ -196,10 +215,15 @@ upload.post('/manual', async (c) => {
         uploadedBy: user.sub,
         originalName: file.name,
         inputMode: 'manual',
+        transactionType: transactionType,
       },
     });
 
     const transactionId = generateId('txn');
+
+    // Set default accounts based on type
+    const defaultAccountDebit = transactionType === 'income' ? '売掛金' : null;
+    const defaultAccountCredit = transactionType === 'income' ? '売上高' : '現金';
 
     await createTransaction(c.env.DB, {
       id: transactionId,
@@ -207,12 +231,14 @@ upload.post('/manual', async (c) => {
       uploaded_by: user.sub,
       image_key: key,
       image_uploaded_at: timestamp,
+      type: transactionType,
       transaction_date: transaction_date,
       amount: parseInt(amount) || 0,
       vendor_name: vendor_name || null,
-      account_debit: account_debit || null,
-      account_credit: account_credit || '現金',
+      account_debit: account_debit || defaultAccountDebit,
+      account_credit: account_credit || defaultAccountCredit,
       tax_category: tax_category || null,
+      tax_rate: tax_rate,
       invoice_number: invoice_number || null,
       ai_confidence: null, // No AI for manual input
       ai_raw_response: null,
@@ -223,6 +249,7 @@ upload.post('/manual', async (c) => {
 
     return c.json({
       transaction_id: transactionId,
+      type: transactionType,
       message: '手動入力で保存しました',
     });
   } catch (error) {

@@ -14,12 +14,14 @@ interface CompanyInfo {
 
 interface TransactionDetail {
   id: string;
+  type: 'expense' | 'income';
   transaction_date: string | null;
   amount: number | null;
   vendor_name: string | null;
   account_debit: string | null;
-  account_credit: string;
+  account_credit: string | null;
   tax_category: string | null;
+  tax_rate: number | null;
   invoice_number: string | null;
   ai_confidence: number | null;
   status: 'pending' | 'confirmed' | 'on_hold';
@@ -511,9 +513,12 @@ export default function ReviewStation() {
                         amount: selectedTransaction.amount,
                         vendor_name: selectedTransaction.vendor_name,
                         account_debit: selectedTransaction.account_debit,
+                        account_credit: selectedTransaction.account_credit,
                         tax_category: selectedTransaction.tax_category,
+                        tax_rate: selectedTransaction.tax_rate,
                         invoice_number: selectedTransaction.invoice_number,
                       }}
+                      type={selectedTransaction.type || 'expense'}
                       aiConfidence={selectedTransaction.ai_confidence}
                       status={selectedTransaction.status}
                       saving={saving}

@@ -30,12 +30,14 @@ export interface Transaction {
   uploaded_by: string;
   image_key: string;
   image_uploaded_at: string;
+  type: 'expense' | 'income'; // 経費 or 売上
   transaction_date: string | null;
   amount: number | null;
   vendor_name: string | null;
   account_debit: string | null;
   account_credit: string;
   tax_category: string | null;
+  tax_rate: number | null; // 8 or 10 (percent)
   invoice_number: string | null; // インボイス番号 (T + 13 digits, e.g., T1234567890123)
   ai_confidence: number | null;
   ai_raw_response: string | null;
@@ -114,7 +116,9 @@ export interface AIExtractionResult {
   amount: number | null;
   vendor_name: string | null;
   account_debit: string | null;
+  account_credit: string | null;
   tax_category: string | null;
+  tax_rate: number | null; // 8 or 10 (percent)
   invoice_number: string | null; // インボイス番号 (T + 13 digits)
   confidence: number;
   raw_response?: string;

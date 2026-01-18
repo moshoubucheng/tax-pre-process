@@ -2,6 +2,7 @@ import { useState } from 'react';
 
 export interface TransactionItem {
   id: string;
+  type?: 'expense' | 'income';
   transaction_date: string | null;
   amount: number | null;
   vendor_name: string | null;
@@ -151,6 +152,12 @@ export default function ConfidenceGroup({
               )}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
+                  {/* Type indicator */}
+                  <span className={`text-xs font-medium ${
+                    txn.type === 'income' ? 'text-green-600' : 'text-red-600'
+                  }`}>
+                    {txn.type === 'income' ? '+' : '▲'}
+                  </span>
                   <span className="font-medium truncate">{txn.vendor_name || '不明'}</span>
                   <span className={`text-xs px-1.5 py-0.5 rounded-full ${
                     txn.status === 'confirmed'
@@ -174,8 +181,10 @@ export default function ConfidenceGroup({
                   )}
                 </div>
               </div>
-              <span className="font-semibold text-sm">
-                ¥{(txn.amount || 0).toLocaleString()}
+              <span className={`font-semibold text-sm ${
+                txn.type === 'income' ? 'text-green-600' : 'text-red-600'
+              }`}>
+                {txn.type === 'income' ? '+' : '-'}¥{(txn.amount || 0).toLocaleString()}
               </span>
             </div>
           ))}

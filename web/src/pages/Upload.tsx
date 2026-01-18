@@ -1,41 +1,30 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
+import {
+  TransactionType,
+  getAccountDebitOptions,
+  getTaxCategoryOptions,
+  TAX_RATE_OPTIONS,
+} from '../constants/accounts';
 
 interface AIResult {
   transaction_date: string | null;
   amount: number | null;
   vendor_name: string | null;
   account_debit: string | null;
+  account_credit: string | null;
   tax_category: string | null;
+  tax_rate: number | null;
   invoice_number: string | null;
   confidence: number;
 }
 
 interface UploadResponse {
   transaction_id: string;
+  type: TransactionType;
   ai_result: AIResult;
 }
-
-const ACCOUNT_OPTIONS = [
-  '旅費交通費',
-  '接待交際費',
-  '会議費',
-  '消耗品費',
-  '通信費',
-  '事務用品費',
-  '水道光熱費',
-  '広告宣伝費',
-  '外注費',
-  '雑費',
-];
-
-const TAX_OPTIONS = [
-  '課対仕入内8%',
-  '課対仕入内10%',
-  '非課税仕入',
-  '対象外',
-];
 
 type InputMode = 'ai' | 'manual';
 
@@ -43,6 +32,7 @@ export default function Upload() {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [mode, setMode] = useState<InputMode>('ai');
+  const [transactionType, setTransactionType] = useState<TransactionType>('expense');
   const [preview, setPreview] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -57,8 +47,13 @@ export default function Upload() {
     vendor_name: '',
     account_debit: '',
     tax_category: '課対仕入内10%',
+    tax_rate: 10,
     invoice_number: '',
   });
+
+  // Get options based on transaction type
+  const accountOptions = getAccountDebitOptions(transactionType);
+  const taxCategoryOptions = getTaxCategoryOptions(transactionType);
 
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const selected = e.target.files?.[0];
@@ -75,17 +70,42 @@ export default function Upload() {
 
     setUploading(true);
     try {
-      const res = await api.upload<UploadResponse>('/upload', file);
+      // Create FormData and include type
+      const uploadFormData = new FormData();
+      uploadFormData.append('file', file);
+      uploadFormData.append('type', transactionType);
+
+      const token = localStorage.getItem('token');
+      const baseUrl = import.meta.env.PROD
+        ? 'https://tax-api.759nxrb6x4-bc3.workers.dev/api'
+        : '/api';
+
+      const response = await fetch(`${baseUrl}/upload`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: uploadFormData,
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'アップロードに失敗しました');
+      }
+
+      const res: UploadResponse = await response.json();
       setTransactionId(res.transaction_id);
       setAiResult(res.ai_result);
 
       // Pre-fill form with AI results
+      const defaultTaxCategory = transactionType === 'income' ? '課税売上10%' : '課対仕入内10%';
       setFormData({
         transaction_date: res.ai_result.transaction_date || '',
         amount: res.ai_result.amount?.toString() || '',
         vendor_name: res.ai_result.vendor_name || '',
         account_debit: res.ai_result.account_debit || '',
-        tax_category: res.ai_result.tax_category || '課対仕入内10%',
+        tax_category: res.ai_result.tax_category || defaultTaxCategory,
+        tax_rate: res.ai_result.tax_rate || 10,
         invoice_number: res.ai_result.invoice_number || '',
       });
     } catch (err) {
@@ -116,13 +136,26 @@ export default function Upload() {
     setPreview(null);
     setAiResult(null);
     setTransactionId(null);
+    const defaultTaxCategory = transactionType === 'income' ? '課税売上10%' : '課対仕入内10%';
     setFormData({
       transaction_date: '',
       amount: '',
       vendor_name: '',
       account_debit: '',
-      tax_category: '課対仕入内10%',
+      tax_category: defaultTaxCategory,
+      tax_rate: 10,
       invoice_number: '',
+    });
+  }
+
+  function handleTypeChange(newType: TransactionType) {
+    setTransactionType(newType);
+    // Update default values based on type
+    const defaultTaxCategory = newType === 'income' ? '課税売上10%' : '課対仕入内10%';
+    setFormData({
+      ...formData,
+      account_debit: '',
+      tax_category: defaultTaxCategory,
     });
   }
 
@@ -140,11 +173,13 @@ export default function Upload() {
     try {
       const submitFormData = new FormData();
       submitFormData.append('file', file);
+      submitFormData.append('type', transactionType);
       submitFormData.append('transaction_date', formData.transaction_date);
       submitFormData.append('amount', formData.amount);
       submitFormData.append('vendor_name', formData.vendor_name);
       submitFormData.append('account_debit', formData.account_debit);
       submitFormData.append('tax_category', formData.tax_category);
+      submitFormData.append('tax_rate', formData.tax_rate.toString());
       submitFormData.append('invoice_number', formData.invoice_number);
 
       const token = localStorage.getItem('token');
@@ -181,9 +216,39 @@ export default function Upload() {
 
   return (
     <div className="max-w-lg mx-auto space-y-6">
-      <h1 className="text-xl font-bold text-gray-900">領収書登録</h1>
+      <h1 className="text-xl font-bold text-gray-900">
+        {transactionType === 'income' ? '売上登録' : '経費登録'}
+      </h1>
 
-      {/* Mode Tabs */}
+      {/* Transaction Type Toggle */}
+      {!aiResult && (
+        <div className="flex bg-gray-100 rounded-lg p-1">
+          <button
+            onClick={() => handleTypeChange('expense')}
+            className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors flex items-center justify-center gap-1 ${
+              transactionType === 'expense'
+                ? 'bg-white text-red-600 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <span className="text-lg">▲</span>
+            経費 (支出)
+          </button>
+          <button
+            onClick={() => handleTypeChange('income')}
+            className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors flex items-center justify-center gap-1 ${
+              transactionType === 'income'
+                ? 'bg-white text-green-600 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <span className="text-lg">+</span>
+            売上 (収入)
+          </button>
+        </div>
+      )}
+
+      {/* Input Mode Tabs */}
       {!aiResult && (
         <div className="flex bg-gray-100 rounded-lg p-1">
           <button
@@ -238,7 +303,9 @@ export default function Upload() {
                 <button
                   onClick={handleUpload}
                   disabled={uploading}
-                  className="flex-1 py-2 bg-primary-600 text-white rounded-md disabled:opacity-50"
+                  className={`flex-1 py-2 text-white rounded-md disabled:opacity-50 ${
+                    transactionType === 'income' ? 'bg-green-600' : 'bg-primary-600'
+                  }`}
                 >
                   {uploading ? 'AI解析中...' : 'アップロード'}
                 </button>
@@ -247,11 +314,13 @@ export default function Upload() {
           ) : (
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="w-full py-12 border-2 border-dashed border-gray-300 rounded-lg hover:border-primary-500 transition-colors"
+              className={`w-full py-12 border-2 border-dashed rounded-lg hover:border-primary-500 transition-colors ${
+                transactionType === 'income' ? 'border-green-300' : 'border-gray-300'
+              }`}
             >
               <div className="text-center">
                 <svg
-                  className="mx-auto h-12 w-12 text-gray-400"
+                  className={`mx-auto h-12 w-12 ${transactionType === 'income' ? 'text-green-400' : 'text-gray-400'}`}
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -270,7 +339,9 @@ export default function Upload() {
                   />
                 </svg>
                 <p className="mt-2 text-sm text-gray-600">
-                  タップして写真を撮影またはファイルを選択
+                  {transactionType === 'income'
+                    ? 'タップして請求書を撮影'
+                    : 'タップして領収書を撮影'}
                 </p>
               </div>
             </button>
@@ -286,7 +357,7 @@ export default function Upload() {
           {/* Image Upload for Manual Mode */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              領収書画像 <span className="text-red-500">*</span>
+              {transactionType === 'income' ? '請求書画像' : '領収書画像'} <span className="text-red-500">*</span>
             </label>
             <input
               ref={fileInputRef}
@@ -371,7 +442,7 @@ export default function Upload() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                店名/取引先
+                {transactionType === 'income' ? '取引先名' : '店名/取引先'}
               </label>
               <input
                 type="text"
@@ -391,42 +462,60 @@ export default function Upload() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md"
               >
                 <option value="">選択してください</option>
-                {ACCOUNT_OPTIONS.map((opt) => (
+                {accountOptions.map((opt) => (
                   <option key={opt} value={opt}>{opt}</option>
                 ))}
               </select>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                税区分
-              </label>
-              <select
-                value={formData.tax_category}
-                onChange={(e) => setFormData({ ...formData, tax_category: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
-              >
-                {TAX_OPTIONS.map((opt) => (
-                  <option key={opt} value={opt}>{opt}</option>
-                ))}
-              </select>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  税率
+                </label>
+                <select
+                  value={formData.tax_rate}
+                  onChange={(e) => setFormData({ ...formData, tax_rate: parseInt(e.target.value) })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                >
+                  {TAX_RATE_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  税区分
+                </label>
+                <select
+                  value={formData.tax_category}
+                  onChange={(e) => setFormData({ ...formData, tax_category: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                >
+                  {taxCategoryOptions.map((opt) => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                インボイス番号
-              </label>
-              <input
-                type="text"
-                value={formData.invoice_number}
-                onChange={(e) => setFormData({ ...formData, invoice_number: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                placeholder="例: T1234567890123"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                ※ T番号なしの場合、仕入税額控除が制限されます
-              </p>
-            </div>
+            {transactionType === 'expense' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  インボイス番号
+                </label>
+                <input
+                  type="text"
+                  value={formData.invoice_number}
+                  onChange={(e) => setFormData({ ...formData, invoice_number: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  placeholder="例: T1234567890123"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  ※ T番号なしの場合、仕入税額控除が制限されます
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="flex gap-2 pt-2">
@@ -439,7 +528,9 @@ export default function Upload() {
             <button
               onClick={handleManualSave}
               disabled={saving}
-              className="flex-1 py-2 bg-primary-600 text-white rounded-md disabled:opacity-50"
+              className={`flex-1 py-2 text-white rounded-md disabled:opacity-50 ${
+                transactionType === 'income' ? 'bg-green-600' : 'bg-primary-600'
+              }`}
             >
               {saving ? '保存中...' : '保存'}
             </button>
@@ -452,15 +543,24 @@ export default function Upload() {
         <div className="bg-white rounded-lg shadow-sm p-4 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="font-semibold text-gray-900">AI解析結果</h2>
-            <span
-              className={`text-sm px-2 py-1 rounded-full ${
-                aiResult.confidence >= 70
+            <div className="flex items-center gap-2">
+              <span className={`text-sm px-2 py-1 rounded-full ${
+                transactionType === 'income'
                   ? 'bg-green-100 text-green-700'
-                  : 'bg-orange-100 text-orange-700'
-              }`}
-            >
-              信頼度: {aiResult.confidence}%
-            </span>
+                  : 'bg-red-100 text-red-700'
+              }`}>
+                {transactionType === 'income' ? '売上' : '経費'}
+              </span>
+              <span
+                className={`text-sm px-2 py-1 rounded-full ${
+                  aiResult.confidence >= 70
+                    ? 'bg-green-100 text-green-700'
+                    : 'bg-orange-100 text-orange-700'
+                }`}
+              >
+                信頼度: {aiResult.confidence}%
+              </span>
+            </div>
           </div>
 
           {preview && (
@@ -513,7 +613,7 @@ export default function Upload() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                店名/取引先
+                {transactionType === 'income' ? '取引先名' : '店名/取引先'}
                 {isLowConfidence('vendor_name') && (
                   <span className="ml-2 text-red-500 text-xs">要確認</span>
                 )}
@@ -540,53 +640,71 @@ export default function Upload() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md"
               >
                 <option value="">選択してください</option>
-                {ACCOUNT_OPTIONS.map((opt) => (
+                {accountOptions.map((opt) => (
                   <option key={opt} value={opt}>{opt}</option>
                 ))}
               </select>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                税区分
-              </label>
-              <select
-                value={formData.tax_category}
-                onChange={(e) => setFormData({ ...formData, tax_category: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
-              >
-                {TAX_OPTIONS.map((opt) => (
-                  <option key={opt} value={opt}>{opt}</option>
-                ))}
-              </select>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  税率
+                </label>
+                <select
+                  value={formData.tax_rate}
+                  onChange={(e) => setFormData({ ...formData, tax_rate: parseInt(e.target.value) })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                >
+                  {TAX_RATE_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  税区分
+                </label>
+                <select
+                  value={formData.tax_category}
+                  onChange={(e) => setFormData({ ...formData, tax_category: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                >
+                  {taxCategoryOptions.map((opt) => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                インボイス番号
-                {isLowConfidence('invoice_number') && (
-                  <span className="ml-2 text-red-500 text-xs">要確認</span>
+            {transactionType === 'expense' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  インボイス番号
+                  {isLowConfidence('invoice_number') && (
+                    <span className="ml-2 text-red-500 text-xs">要確認</span>
+                  )}
+                </label>
+                <input
+                  type="text"
+                  value={formData.invoice_number}
+                  onChange={(e) => setFormData({ ...formData, invoice_number: e.target.value })}
+                  className={`w-full px-3 py-2 border rounded-md ${
+                    isLowConfidence('invoice_number')
+                      ? 'border-red-300 bg-red-50'
+                      : formData.invoice_number
+                      ? 'border-green-300 bg-green-50'
+                      : 'border-orange-300 bg-orange-50'
+                  }`}
+                  placeholder="例: T1234567890123"
+                />
+                {!formData.invoice_number && (
+                  <p className="text-xs text-orange-600 mt-1">
+                    ※ T番号なしの場合、仕入税額控除が制限されます
+                  </p>
                 )}
-              </label>
-              <input
-                type="text"
-                value={formData.invoice_number}
-                onChange={(e) => setFormData({ ...formData, invoice_number: e.target.value })}
-                className={`w-full px-3 py-2 border rounded-md ${
-                  isLowConfidence('invoice_number')
-                    ? 'border-red-300 bg-red-50'
-                    : formData.invoice_number
-                    ? 'border-green-300 bg-green-50'
-                    : 'border-orange-300 bg-orange-50'
-                }`}
-                placeholder="例: T1234567890123"
-              />
-              {!formData.invoice_number && (
-                <p className="text-xs text-orange-600 mt-1">
-                  ※ T番号なしの場合、仕入税額控除が制限されます
-                </p>
-              )}
-            </div>
+              </div>
+            )}
           </div>
 
           <div className="flex gap-2 pt-2">
@@ -598,7 +716,9 @@ export default function Upload() {
             </button>
             <button
               onClick={handleConfirm}
-              className="flex-1 py-2 bg-primary-600 text-white rounded-md"
+              className={`flex-1 py-2 text-white rounded-md ${
+                transactionType === 'income' ? 'bg-green-600' : 'bg-primary-600'
+              }`}
             >
               確定して保存
             </button>

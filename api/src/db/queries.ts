@@ -162,10 +162,10 @@ export async function createTransaction(
   await db
     .prepare(
       `INSERT INTO transactions
-       (id, company_id, uploaded_by, image_key, image_uploaded_at, transaction_date,
-        amount, vendor_name, account_debit, account_credit, tax_category, invoice_number,
+       (id, company_id, uploaded_by, image_key, image_uploaded_at, type, transaction_date,
+        amount, vendor_name, account_debit, account_credit, tax_category, tax_rate, invoice_number,
         ai_confidence, ai_raw_response, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .bind(
       txn.id,
@@ -173,12 +173,14 @@ export async function createTransaction(
       txn.uploaded_by,
       txn.image_key,
       txn.image_uploaded_at,
+      txn.type,
       txn.transaction_date,
       txn.amount,
       txn.vendor_name,
       txn.account_debit,
       txn.account_credit,
       txn.tax_category,
+      txn.tax_rate,
       txn.invoice_number,
       txn.ai_confidence,
       txn.ai_raw_response,
@@ -222,6 +224,14 @@ export async function updateTransaction(
   if (updates.invoice_number !== undefined) {
     fields.push('invoice_number = ?');
     values.push(updates.invoice_number);
+  }
+  if (updates.type !== undefined) {
+    fields.push('type = ?');
+    values.push(updates.type);
+  }
+  if (updates.tax_rate !== undefined) {
+    fields.push('tax_rate = ?');
+    values.push(updates.tax_rate);
   }
   if (updates.description !== undefined) {
     fields.push('description = ?');

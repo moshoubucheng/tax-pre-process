@@ -17,6 +17,7 @@ interface Company {
 
 interface Transaction {
   id: string;
+  type?: 'expense' | 'income';
   transaction_date: string | null;
   amount: number | null;
   vendor_name: string | null;
@@ -30,15 +31,17 @@ interface Transaction {
 
 interface TransactionDetail {
   id: string;
+  type: 'expense' | 'income';
   transaction_date: string | null;
   amount: number | null;
   vendor_name: string | null;
   account_debit: string | null;
-  account_credit: string;
+  account_credit: string | null;
   tax_category: string | null;
+  tax_rate: number | null;
   invoice_number: string | null;
   ai_confidence: number | null;
-  status: 'pending' | 'confirmed';
+  status: 'pending' | 'confirmed' | 'on_hold';
   image_key: string;
   created_at: string;
 }
@@ -837,6 +840,12 @@ export default function AdminPanel() {
                           )}
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
+                              {/* Type indicator */}
+                              <span className={`text-sm font-medium ${
+                                txn.type === 'income' ? 'text-green-600' : 'text-red-600'
+                              }`}>
+                                {txn.type === 'income' ? '+' : '▲'}
+                              </span>
                               <span className="font-medium">{txn.vendor_name || '不明'}</span>
                               <span className={`text-xs px-2 py-0.5 rounded-full ${
                                 txn.status === 'confirmed'
@@ -861,7 +870,11 @@ export default function AdminPanel() {
                           </div>
                         </div>
                         <div className="text-right flex items-center gap-3">
-                          <span className="font-semibold">¥{(txn.amount ?? 0).toLocaleString()}</span>
+                          <span className={`font-semibold ${
+                            txn.type === 'income' ? 'text-green-600' : 'text-red-600'
+                          }`}>
+                            {txn.type === 'income' ? '+' : '-'}¥{(txn.amount ?? 0).toLocaleString()}
+                          </span>
                           {txn.status === 'pending' && (
                             <button
                               onClick={(e) => {
@@ -974,14 +987,28 @@ export default function AdminPanel() {
 
                   {/* Transaction Info */}
                   <div className="space-y-3">
+                    {/* Type and Status */}
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-500">種別</span>
+                      <span className={`px-3 py-1 rounded-full text-sm flex items-center gap-1 ${
+                        selectedTxn.type === 'income'
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-red-100 text-red-700'
+                      }`}>
+                        <span>{selectedTxn.type === 'income' ? '+' : '▲'}</span>
+                        {selectedTxn.type === 'income' ? '売上' : '経費'}
+                      </span>
+                    </div>
                     <div className="flex justify-between items-center">
                       <span className="text-gray-500">ステータス</span>
                       <span className={`px-2 py-1 rounded-full text-sm ${
                         selectedTxn.status === 'confirmed'
                           ? 'bg-green-100 text-green-700'
+                          : selectedTxn.status === 'on_hold'
+                          ? 'bg-yellow-100 text-yellow-700'
                           : 'bg-orange-100 text-orange-700'
                       }`}>
-                        {selectedTxn.status === 'confirmed' ? '確認済' : '要確認'}
+                        {selectedTxn.status === 'confirmed' ? '確認済' : selectedTxn.status === 'on_hold' ? '確認待ち' : '要確認'}
                       </span>
                     </div>
                     <div className="flex justify-between">
@@ -994,7 +1021,11 @@ export default function AdminPanel() {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500">金額</span>
-                      <span className="font-medium text-lg">¥{(selectedTxn.amount || 0).toLocaleString()}</span>
+                      <span className={`font-medium text-lg ${
+                        selectedTxn.type === 'income' ? 'text-green-600' : 'text-red-600'
+                      }`}>
+                        {selectedTxn.type === 'income' ? '+' : '-'}¥{(selectedTxn.amount || 0).toLocaleString()}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500">勘定科目（借方）</span>
@@ -1003,6 +1034,14 @@ export default function AdminPanel() {
                     <div className="flex justify-between">
                       <span className="text-gray-500">勘定科目（貸方）</span>
                       <span className="font-medium">{selectedTxn.account_credit || '未設定'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">税率</span>
+                      <span className={`font-medium ${
+                        selectedTxn.tax_rate === 8 ? 'text-orange-600' : ''
+                      }`}>
+                        {selectedTxn.tax_rate ? `${selectedTxn.tax_rate}%${selectedTxn.tax_rate === 8 ? ' (軽減税率)' : ''}` : '未設定'}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500">税区分</span>
@@ -1144,6 +1183,12 @@ export default function AdminPanel() {
                             <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">
                               {txn.company_name}
                             </span>
+                            {/* Type indicator */}
+                            <span className={`text-sm font-medium ${
+                              txn.type === 'income' ? 'text-green-600' : 'text-red-600'
+                            }`}>
+                              {txn.type === 'income' ? '+' : '▲'}
+                            </span>
                             <span className="font-medium">{txn.vendor_name || '不明'}</span>
                             <span className={`text-xs px-2 py-0.5 rounded-full ${
                               txn.status === 'on_hold'
@@ -1160,7 +1205,11 @@ export default function AdminPanel() {
                           </div>
                         </div>
                         <div className="text-right flex items-center gap-3">
-                          <span className="font-semibold">¥{(txn.amount ?? 0).toLocaleString()}</span>
+                          <span className={`font-semibold ${
+                            txn.type === 'income' ? 'text-green-600' : 'text-red-600'
+                          }`}>
+                            {txn.type === 'income' ? '+' : '-'}¥{(txn.amount ?? 0).toLocaleString()}
+                          </span>
                           <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                           </svg>
