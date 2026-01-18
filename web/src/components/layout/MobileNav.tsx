@@ -1,27 +1,61 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { useClientContext } from '../../hooks/useClientContext';
 
 export default function MobileNav() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { selectedClient, clearSelectedClient } = useClientContext();
+
+  const isAdmin = user?.role === 'admin';
+  const isClientMode = isAdmin && selectedClient !== null;
 
   const isActive = (path: string) => location.pathname === path;
 
-  const navItems = [
-    { path: '/', label: 'ホーム', icon: HomeIcon },
-    { path: '/upload', label: '領収書', icon: UploadIcon },
-    { path: '/documents', label: '基礎資料', icon: DocumentIcon },
-    { path: '/chat', label: 'AI相談', icon: ChatIcon },
+  // Global view nav items
+  const globalNavItems = isAdmin
+    ? [
+        { path: '/', label: 'ホーム', icon: HomeIcon },
+        { path: '/clients', label: '顧問先', icon: ClientsIcon },
+        { path: '/chat', label: 'AI相談', icon: ChatIcon },
+        { path: '/settings', label: '設定', icon: SettingsIcon },
+      ]
+    : [
+        { path: '/', label: 'ホーム', icon: HomeIcon },
+        { path: '/upload', label: '領収書', icon: UploadIcon },
+        { path: '/documents', label: '基礎資料', icon: DocumentIcon },
+        { path: '/chat', label: 'AI相談', icon: ChatIcon },
+        { path: '/settings', label: '設定', icon: SettingsIcon },
+      ];
+
+  // Client view nav items
+  const clientNavItems = [
+    { path: '/client/dashboard', label: 'ダッシュ', icon: DashboardIcon },
+    { path: '/client/review', label: '審核', icon: ReviewIcon },
+    { path: '/client/documents', label: '基礎資料', icon: DocumentIcon },
+    { path: '/client/transactions', label: '取引', icon: ListIcon },
   ];
 
-  if (user?.role === 'admin') {
-    navItems.splice(1, 0, { path: '/admin', label: '管理', icon: AdminIcon });
+  const navItems = isClientMode ? clientNavItems : globalNavItems;
+
+  function handleBackToGlobal() {
+    clearSelectedClient();
+    navigate('/clients');
   }
 
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 safe-bottom">
       <div className="flex items-center justify-around py-2">
+        {isClientMode && (
+          <button
+            onClick={handleBackToGlobal}
+            className="flex flex-col items-center p-2 min-w-[64px] text-gray-500"
+          >
+            <BackIcon className="w-6 h-6" />
+            <span className="text-xs mt-1">戻る</span>
+          </button>
+        )}
         {navItems.map((item) => (
           <button
             key={item.path}
@@ -36,17 +70,6 @@ export default function MobileNav() {
             <span className="text-xs mt-1">{item.label}</span>
           </button>
         ))}
-        <button
-          onClick={() => navigate('/settings')}
-          className={`flex flex-col items-center p-2 min-w-[64px] ${
-            isActive('/settings')
-              ? 'text-primary-600'
-              : 'text-gray-500'
-          }`}
-        >
-          <SettingsIcon className="w-6 h-6" />
-          <span className="text-xs mt-1">設定</span>
-        </button>
       </div>
     </nav>
   );
@@ -85,7 +108,7 @@ function ChatIcon({ className }: { className?: string }) {
   );
 }
 
-function AdminIcon({ className }: { className?: string }) {
+function ClientsIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
@@ -102,3 +125,34 @@ function SettingsIcon({ className }: { className?: string }) {
   );
 }
 
+function BackIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+    </svg>
+  );
+}
+
+function DashboardIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+    </svg>
+  );
+}
+
+function ReviewIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+    </svg>
+  );
+}
+
+function ListIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+    </svg>
+  );
+}

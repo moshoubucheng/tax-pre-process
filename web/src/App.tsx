@@ -1,9 +1,11 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './hooks/useAuth';
+import { ClientProvider } from './hooks/useClientContext';
 import Login from './pages/Login';
 import ClientDashboard from './pages/ClientDashboard';
 import Upload from './pages/Upload';
-import AdminPanel from './pages/AdminPanel';
+import AdminHome from './pages/AdminHome';
+import Clients from './pages/Clients';
 import AdminReceipts from './pages/AdminReceipts';
 import Chat from './pages/Chat';
 import Documents from './pages/Documents';
@@ -11,6 +13,12 @@ import AdminDocuments from './pages/AdminDocuments';
 import Settings from './pages/Settings';
 import ReviewStation from './pages/ReviewStation';
 import Layout from './components/layout/Layout';
+
+// Client-specific pages (admin viewing a client)
+import ClientDashboardAdmin from './pages/client/ClientDashboard';
+import ClientReview from './pages/client/ClientReview';
+import ClientDocumentsAdmin from './pages/client/ClientDocuments';
+import ClientTransactions from './pages/client/ClientTransactions';
 
 function PrivateRoute({ children, adminOnly = false }: { children: React.ReactNode; adminOnly?: boolean }) {
   const { user, loading } = useAuth();
@@ -41,14 +49,56 @@ function AppRoutes() {
     <Routes>
       <Route path="/login" element={<Login />} />
 
+      {/* Home - Admin sees dashboard, Client sees their dashboard */}
       <Route path="/" element={
         <PrivateRoute>
           <Layout>
-            {user?.role === 'admin' ? <AdminPanel /> : <ClientDashboard />}
+            {user?.role === 'admin' ? <AdminHome /> : <ClientDashboard />}
           </Layout>
         </PrivateRoute>
       } />
 
+      {/* Clients list (Admin only) */}
+      <Route path="/clients" element={
+        <PrivateRoute adminOnly>
+          <Layout>
+            <Clients />
+          </Layout>
+        </PrivateRoute>
+      } />
+
+      {/* Client-specific routes (Admin viewing a specific client) */}
+      <Route path="/client/dashboard" element={
+        <PrivateRoute adminOnly>
+          <Layout>
+            <ClientDashboardAdmin />
+          </Layout>
+        </PrivateRoute>
+      } />
+
+      <Route path="/client/review" element={
+        <PrivateRoute adminOnly>
+          <ClientReview />
+        </PrivateRoute>
+      } />
+
+      <Route path="/client/documents" element={
+        <PrivateRoute adminOnly>
+          <Layout>
+            <ClientDocumentsAdmin />
+          </Layout>
+        </PrivateRoute>
+      } />
+
+      <Route path="/client/transactions" element={
+        <PrivateRoute adminOnly>
+          <Layout>
+            <ClientTransactions />
+          </Layout>
+        </PrivateRoute>
+      } />
+
+      {/* Upload/Receipts */}
       <Route path="/upload" element={
         <PrivateRoute>
           <Layout>
@@ -57,14 +107,7 @@ function AppRoutes() {
         </PrivateRoute>
       } />
 
-      <Route path="/admin" element={
-        <PrivateRoute adminOnly>
-          <Layout>
-            <AdminPanel />
-          </Layout>
-        </PrivateRoute>
-      } />
-
+      {/* Chat/AI Support */}
       <Route path="/chat" element={
         <PrivateRoute>
           <Layout>
@@ -73,6 +116,7 @@ function AppRoutes() {
         </PrivateRoute>
       } />
 
+      {/* Documents */}
       <Route path="/documents" element={
         <PrivateRoute>
           <Layout>
@@ -81,6 +125,7 @@ function AppRoutes() {
         </PrivateRoute>
       } />
 
+      {/* Settings */}
       <Route path="/settings" element={
         <PrivateRoute>
           <Layout>
@@ -89,11 +134,15 @@ function AppRoutes() {
         </PrivateRoute>
       } />
 
+      {/* Review Station (direct URL access) */}
       <Route path="/review/:companyId" element={
         <PrivateRoute adminOnly>
           <ReviewStation />
         </PrivateRoute>
       } />
+
+      {/* Legacy admin route - redirect to home */}
+      <Route path="/admin" element={<Navigate to="/" replace />} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
@@ -103,7 +152,9 @@ function AppRoutes() {
 export default function App() {
   return (
     <AuthProvider>
-      <AppRoutes />
+      <ClientProvider>
+        <AppRoutes />
+      </ClientProvider>
     </AuthProvider>
   );
 }

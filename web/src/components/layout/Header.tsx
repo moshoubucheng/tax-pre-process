@@ -1,33 +1,76 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { useClientContext } from '../../hooks/useClientContext';
 
 export default function Header() {
   const { user, logout } = useAuth();
+  const { selectedClient, clearSelectedClient } = useClientContext();
   const location = useLocation();
   const navigate = useNavigate();
 
+  const isAdmin = user?.role === 'admin';
+  const isClientMode = isAdmin && selectedClient !== null;
+
   const isActive = (path: string) => location.pathname === path;
 
-  const navItems = [
-    { path: '/', label: 'ホーム' },
-    { path: '/upload', label: '領収書' },
-    { path: '/documents', label: '基礎資料' },
-    { path: '/chat', label: 'AI相談' },
+  // Global view nav items (for clients or admin without selected client)
+  const globalNavItems = isAdmin
+    ? [
+        { path: '/', label: 'ホーム' },
+        { path: '/clients', label: '顧問先' },
+        { path: '/chat', label: 'AI相談' },
+      ]
+    : [
+        { path: '/', label: 'ホーム' },
+        { path: '/upload', label: '領収書' },
+        { path: '/documents', label: '基礎資料' },
+        { path: '/chat', label: 'AI相談' },
+      ];
+
+  // Client view nav items (admin with selected client)
+  const clientNavItems = [
+    { path: '/client/dashboard', label: 'ダッシュボード' },
+    { path: '/client/review', label: '審核' },
+    { path: '/client/documents', label: '基礎資料' },
+    { path: '/client/transactions', label: '取引一覧' },
   ];
 
-  if (user?.role === 'admin') {
-    navItems.splice(1, 0, { path: '/admin', label: '管理' });
+  const navItems = isClientMode ? clientNavItems : globalNavItems;
+
+  function handleBackToGlobal() {
+    clearSelectedClient();
+    navigate('/clients');
   }
 
   return (
     <header className="bg-white shadow-sm border-b border-gray-200">
       <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <h1 className="text-xl font-bold text-primary-600">Tax Pre-Process</h1>
-          {user?.role === 'admin' && (
-            <span className="text-xs bg-primary-100 text-primary-700 px-2 py-1 rounded-full">
-              管理者
-            </span>
+          {isClientMode ? (
+            <>
+              <button
+                onClick={handleBackToGlobal}
+                className="text-gray-500 hover:text-gray-700 flex items-center gap-1"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                <span className="hidden sm:inline text-sm">戻る</span>
+              </button>
+              <div className="h-6 w-px bg-gray-300" />
+              <h1 className="text-lg font-bold text-primary-600 truncate max-w-[200px]">
+                {selectedClient.name}
+              </h1>
+            </>
+          ) : (
+            <>
+              <h1 className="text-xl font-bold text-primary-600">Tax Pre-Process</h1>
+              {isAdmin && (
+                <span className="text-xs bg-primary-100 text-primary-700 px-2 py-1 rounded-full">
+                  管理者
+                </span>
+              )}
+            </>
           )}
         </div>
 
@@ -49,6 +92,13 @@ export default function Header() {
         </nav>
 
         <div className="hidden md:flex items-center gap-4">
+          {isClientMode && (
+            <div className="flex items-center gap-2 text-sm">
+              <span className="text-green-600">{selectedClient.confirmed_count}確認済</span>
+              <span className="text-gray-400">/</span>
+              <span className="text-orange-600">{selectedClient.pending_count}要確認</span>
+            </div>
+          )}
           <span className="text-sm text-gray-600">{user?.name}</span>
           <button
             onClick={() => navigate('/settings')}
