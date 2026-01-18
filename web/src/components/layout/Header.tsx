@@ -1,15 +1,27 @@
+import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useClientContext } from '../../hooks/useClientContext';
+import { api } from '../../lib/api';
 
 export default function Header() {
   const { user, logout } = useAuth();
   const { selectedClient, clearSelectedClient } = useClientContext();
   const location = useLocation();
   const navigate = useNavigate();
+  const [clientCount, setClientCount] = useState<number | null>(null);
 
   const isAdmin = user?.role === 'admin';
   const isClientMode = isAdmin && selectedClient !== null;
+
+  // Fetch client count for admin
+  useEffect(() => {
+    if (isAdmin && !isClientMode) {
+      api.get<{ data: { id: string }[] }>('/admin/companies')
+        .then(res => setClientCount(res.data?.length || 0))
+        .catch(() => {});
+    }
+  }, [isAdmin, isClientMode]);
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -85,13 +97,18 @@ export default function Header() {
             <button
               key={item.path}
               onClick={() => navigate(item.path)}
-              className={`text-sm font-medium transition-colors ${
+              className={`text-sm font-medium transition-colors flex items-center gap-1 ${
                 isActive(item.path)
                   ? 'text-primary-600'
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
               {item.label}
+              {item.path === '/clients' && clientCount !== null && (
+                <span className="text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded-full">
+                  {clientCount}
+                </span>
+              )}
             </button>
           ))}
         </nav>

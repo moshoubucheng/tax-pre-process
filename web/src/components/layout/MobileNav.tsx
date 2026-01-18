@@ -1,15 +1,27 @@
+import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useClientContext } from '../../hooks/useClientContext';
+import { api } from '../../lib/api';
 
 export default function MobileNav() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { selectedClient, clearSelectedClient } = useClientContext();
+  const [clientCount, setClientCount] = useState<number | null>(null);
 
   const isAdmin = user?.role === 'admin';
   const isClientMode = isAdmin && selectedClient !== null;
+
+  // Fetch client count for admin
+  useEffect(() => {
+    if (isAdmin && !isClientMode) {
+      api.get<{ data: { id: string }[] }>('/admin/companies')
+        .then(res => setClientCount(res.data?.length || 0))
+        .catch(() => {});
+    }
+  }, [isAdmin, isClientMode]);
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -60,13 +72,20 @@ export default function MobileNav() {
           <button
             key={item.path}
             onClick={() => navigate(item.path)}
-            className={`flex flex-col items-center p-2 min-w-[64px] ${
+            className={`flex flex-col items-center p-2 min-w-[64px] relative ${
               isActive(item.path)
                 ? 'text-primary-600'
                 : 'text-gray-500'
             }`}
           >
-            <item.icon className="w-6 h-6" />
+            <div className="relative">
+              <item.icon className="w-6 h-6" />
+              {item.path === '/clients' && clientCount !== null && (
+                <span className="absolute -top-1 -right-2 text-[10px] bg-gray-200 text-gray-600 px-1 rounded-full min-w-[16px] text-center">
+                  {clientCount}
+                </span>
+              )}
+            </div>
             <span className="text-xs mt-1">{item.label}</span>
           </button>
         ))}
