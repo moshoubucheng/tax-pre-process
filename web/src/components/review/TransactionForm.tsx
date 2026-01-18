@@ -7,6 +7,7 @@ export interface TransactionFormData {
   vendor_name: string | null;
   account_debit: string | null;
   tax_category: string | null;
+  invoice_number: string | null;
 }
 
 export interface TransactionFormRef {
@@ -203,6 +204,28 @@ const TransactionForm = forwardRef<TransactionFormRef, TransactionFormProps>(({
               </option>
             ))}
           </select>
+        </div>
+
+        {/* Invoice Number Field (インボイス番号) */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            インボイス番号
+            {isLowConfidence('invoice_number') && (
+              <span className="ml-1 text-orange-500">*</span>
+            )}
+          </label>
+          <input
+            type="text"
+            value={formData.invoice_number || ''}
+            onChange={(e) => handleChange('invoice_number', e.target.value || null)}
+            className={fieldClass('invoice_number')}
+            placeholder="例: T1234567890123"
+          />
+          {!formData.invoice_number && (
+            <p className="text-xs text-orange-600 mt-1">
+              ※ T番号なしの場合、仕入税額控除が制限されます
+            </p>
+          )}
         </div>
 
         {/* Low confidence hint */}

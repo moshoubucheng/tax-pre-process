@@ -36,6 +36,7 @@ export interface Transaction {
   account_debit: string | null;
   account_credit: string;
   tax_category: string | null;
+  invoice_number: string | null; // インボイス番号 (T + 13 digits, e.g., T1234567890123)
   ai_confidence: number | null;
   ai_raw_response: string | null;
   description: string | null;
@@ -114,6 +115,7 @@ export interface AIExtractionResult {
   vendor_name: string | null;
   account_debit: string | null;
   tax_category: string | null;
+  invoice_number: string | null; // インボイス番号 (T + 13 digits)
   confidence: number;
   raw_response?: string;
 }

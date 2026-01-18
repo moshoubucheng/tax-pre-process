@@ -20,6 +20,7 @@ interface TransactionDetail {
   account_debit: string | null;
   account_credit: string;
   tax_category: string | null;
+  invoice_number: string | null;
   ai_confidence: number | null;
   status: 'pending' | 'confirmed' | 'on_hold';
   image_key: string;
@@ -511,6 +512,7 @@ export default function ReviewStation() {
                         vendor_name: selectedTransaction.vendor_name,
                         account_debit: selectedTransaction.account_debit,
                         tax_category: selectedTransaction.tax_category,
+                        invoice_number: selectedTransaction.invoice_number,
                       }}
                       aiConfidence={selectedTransaction.ai_confidence}
                       status={selectedTransaction.status}

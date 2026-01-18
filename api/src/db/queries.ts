@@ -163,9 +163,9 @@ export async function createTransaction(
     .prepare(
       `INSERT INTO transactions
        (id, company_id, uploaded_by, image_key, image_uploaded_at, transaction_date,
-        amount, vendor_name, account_debit, account_credit, tax_category,
+        amount, vendor_name, account_debit, account_credit, tax_category, invoice_number,
         ai_confidence, ai_raw_response, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .bind(
       txn.id,
@@ -179,6 +179,7 @@ export async function createTransaction(
       txn.account_debit,
       txn.account_credit,
       txn.tax_category,
+      txn.invoice_number,
       txn.ai_confidence,
       txn.ai_raw_response,
       txn.status
@@ -217,6 +218,10 @@ export async function updateTransaction(
   if (updates.tax_category !== undefined) {
     fields.push('tax_category = ?');
     values.push(updates.tax_category);
+  }
+  if (updates.invoice_number !== undefined) {
+    fields.push('invoice_number = ?');
+    values.push(updates.invoice_number);
   }
   if (updates.description !== undefined) {
     fields.push('description = ?');

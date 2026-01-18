@@ -35,9 +35,13 @@ const OCR_SYSTEM_PROMPT = `あなたは日本の領収書・レシートを解�
 4. 推測される勘定科目 (以下から選択):
    ${ACCOUNT_TITLES.join(', ')}
 5. 税区分の推測:
-   - 飲食店・コンビニ等: 課対仕入内8% または 課対仕入内10%
+   - 飲食店・コンビニ等の軽減税率対象: 課対仕入内8%(軽)
    - 一般的な商品・サービス: 課対仕入内10%
    - 電車・バス等の交通費: 課対仕入内10%
+6. インボイス番号 (適格請求書発行事業者登録番号):
+   - "T"で始まる13桁の数字 (例: T1234567890123)
+   - 領収書やレシートに「登録番号」「T-」などの記載を探す
+   - 見つからない場合はnull
 
 JSONで回答してください。読み取れない項目はnullにしてください。
 信頼度(confidence)は0-100で、全体の読み取り精度を示してください。
@@ -49,6 +53,7 @@ JSONで回答してください。読み取れない項目はnullにしてくだ
   "vendor_name": "JR東日本",
   "account_debit": "旅費交通費",
   "tax_category": "課対仕入内10%",
+  "invoice_number": "T1234567890123",
   "confidence": 85
 }`;
 
@@ -113,6 +118,7 @@ export async function extractReceiptData(
       vendor_name: parsed.vendor_name || null,
       account_debit: parsed.account_debit || null,
       tax_category: parsed.tax_category || null,
+      invoice_number: parsed.invoice_number || null,
       confidence: parsed.confidence || 50,
       raw_response: rawResponse,
     };
@@ -126,6 +132,7 @@ export async function extractReceiptData(
       vendor_name: null,
       account_debit: null,
       tax_category: null,
+      invoice_number: null,
       confidence: 0,
       raw_response: error instanceof Error ? error.message : 'Unknown error',
     };

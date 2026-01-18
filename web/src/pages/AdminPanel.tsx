@@ -36,6 +36,7 @@ interface TransactionDetail {
   account_debit: string | null;
   account_credit: string;
   tax_category: string | null;
+  invoice_number: string | null;
   ai_confidence: number | null;
   status: 'pending' | 'confirmed';
   image_key: string;
@@ -1006,6 +1007,12 @@ export default function AdminPanel() {
                     <div className="flex justify-between">
                       <span className="text-gray-500">税区分</span>
                       <span className="font-medium">{selectedTxn.tax_category || '未設定'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">インボイス番号</span>
+                      <span className={`font-medium ${selectedTxn.invoice_number ? 'text-green-600' : 'text-orange-600'}`}>
+                        {selectedTxn.invoice_number || '未登録（税控除制限）'}
+                      </span>
                     </div>
                     {selectedTxn.ai_confidence !== null && (
                       <div className="flex justify-between">

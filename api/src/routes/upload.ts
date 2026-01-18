@@ -4,11 +4,18 @@ import { authMiddleware } from '../middleware/auth';
 import { generateId } from '../services/password';
 import { extractReceiptData, validateImageType } from '../services/ai-ocr';
 import { createTransaction, getTransactionById } from '../db/queries';
+import { verifyJWT } from '../services/jwt';
 
 const upload = new Hono<{ Bindings: Env }>();
 
-// Apply auth middleware
-upload.use('*', authMiddleware);
+// Apply auth middleware to non-image routes
+upload.use('*', async (c, next) => {
+  // Skip auth middleware for image routes (they handle auth via query param)
+  if (c.req.path.includes('/image')) {
+    return next();
+  }
+  return authMiddleware(c, next);
+});
 
 // Maximum file size: 10MB
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
@@ -102,11 +109,12 @@ upload.post('/', async (c) => {
       account_debit: aiResult.account_debit,
       account_credit: '現金',
       tax_category: aiResult.tax_category,
+      invoice_number: aiResult.invoice_number,
       ai_confidence: aiResult.confidence,
       ai_raw_response: aiResult.raw_response || null,
       description: null,
       admin_note: null,
-      status: aiResult.confidence >= 70 ? 'pending' : 'pending', // Always pending, user must confirm
+      status: 'pending', // Always pending, user must confirm
     });
 
     return c.json({
@@ -118,6 +126,7 @@ upload.post('/', async (c) => {
         vendor_name: aiResult.vendor_name,
         account_debit: aiResult.account_debit,
         tax_category: aiResult.tax_category,
+        invoice_number: aiResult.invoice_number,
         confidence: aiResult.confidence,
       },
     });
@@ -164,6 +173,7 @@ upload.post('/manual', async (c) => {
     const account_debit = formData.get('account_debit') as string;
     const account_credit = formData.get('account_credit') as string;
     const tax_category = formData.get('tax_category') as string;
+    const invoice_number = formData.get('invoice_number') as string;
 
     // Validate required fields
     if (!transaction_date || !amount) {
@@ -203,6 +213,7 @@ upload.post('/manual', async (c) => {
       account_debit: account_debit || null,
       account_credit: account_credit || '現金',
       tax_category: tax_category || null,
+      invoice_number: invoice_number || null,
       ai_confidence: null, // No AI for manual input
       ai_raw_response: null,
       description: null,
@@ -223,7 +234,20 @@ upload.post('/manual', async (c) => {
 // GET /api/upload/image/:key - Get image from R2
 upload.get('/image/*', async (c) => {
   try {
-    const user = c.get('user');
+    // Get token from query param (for img src) or Authorization header
+    const queryToken = c.req.query('token');
+    const authHeader = c.req.header('Authorization');
+    const token = queryToken || (authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null);
+
+    if (!token) {
+      return c.json({ error: '認証が必要です' }, 401);
+    }
+
+    // Verify token
+    const payload = await verifyJWT(token, c.env.JWT_SECRET);
+    if (!payload) {
+      return c.json({ error: 'トークンが無効または期限切れです' }, 401);
+    }
 
     // Get the full path after /image/
     const key = c.req.path.replace('/api/upload/image/', '');
@@ -242,13 +266,13 @@ upload.get('/image/*', async (c) => {
     // For security, verify user has access to this image
     // Check if there's a transaction with this image_key that belongs to user's company
     // (Skip this check for admins)
-    if (user.role !== 'admin') {
+    if (payload.role !== 'admin') {
       const result = await c.env.DB
         .prepare('SELECT company_id FROM transactions WHERE image_key = ?')
         .bind(key)
         .first<{ company_id: string }>();
 
-      if (!result || result.company_id !== user.company_id) {
+      if (!result || result.company_id !== payload.company_id) {
         return c.json({ error: 'アクセス権限がありません' }, 403);
       }
     }
@@ -268,7 +292,21 @@ upload.get('/image/*', async (c) => {
 // GET /api/upload/transaction/:id/image - Get image by transaction ID
 upload.get('/transaction/:id/image', async (c) => {
   try {
-    const user = c.get('user');
+    // Get token from query param (for img src) or Authorization header
+    const queryToken = c.req.query('token');
+    const authHeader = c.req.header('Authorization');
+    const token = queryToken || (authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null);
+
+    if (!token) {
+      return c.json({ error: '認証が必要です' }, 401);
+    }
+
+    // Verify token
+    const payload = await verifyJWT(token, c.env.JWT_SECRET);
+    if (!payload) {
+      return c.json({ error: 'トークンが無効または期限切れです' }, 401);
+    }
+
     const transactionId = c.req.param('id');
 
     // Get transaction
@@ -279,7 +317,7 @@ upload.get('/transaction/:id/image', async (c) => {
     }
 
     // Check access permission
-    if (user.role !== 'admin' && transaction.company_id !== user.company_id) {
+    if (payload.role !== 'admin' && transaction.company_id !== payload.company_id) {
       return c.json({ error: 'アクセス権限がありません' }, 403);
     }
 

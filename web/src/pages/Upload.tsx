@@ -8,6 +8,7 @@ interface AIResult {
   vendor_name: string | null;
   account_debit: string | null;
   tax_category: string | null;
+  invoice_number: string | null;
   confidence: number;
 }
 
@@ -56,6 +57,7 @@ export default function Upload() {
     vendor_name: '',
     account_debit: '',
     tax_category: '課対仕入内10%',
+    invoice_number: '',
   });
 
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
@@ -84,6 +86,7 @@ export default function Upload() {
         vendor_name: res.ai_result.vendor_name || '',
         account_debit: res.ai_result.account_debit || '',
         tax_category: res.ai_result.tax_category || '課対仕入内10%',
+        invoice_number: res.ai_result.invoice_number || '',
       });
     } catch (err) {
       alert(err instanceof Error ? err.message : 'アップロードに失敗しました');
@@ -119,6 +122,7 @@ export default function Upload() {
       vendor_name: '',
       account_debit: '',
       tax_category: '課対仕入内10%',
+      invoice_number: '',
     });
   }
 
@@ -141,6 +145,7 @@ export default function Upload() {
       submitFormData.append('vendor_name', formData.vendor_name);
       submitFormData.append('account_debit', formData.account_debit);
       submitFormData.append('tax_category', formData.tax_category);
+      submitFormData.append('invoice_number', formData.invoice_number);
 
       const token = localStorage.getItem('token');
       const baseUrl = import.meta.env.PROD
@@ -406,6 +411,22 @@ export default function Upload() {
                 ))}
               </select>
             </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                インボイス番号
+              </label>
+              <input
+                type="text"
+                value={formData.invoice_number}
+                onChange={(e) => setFormData({ ...formData, invoice_number: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                placeholder="例: T1234567890123"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                ※ T番号なしの場合、仕入税額控除が制限されます
+              </p>
+            </div>
           </div>
 
           <div className="flex gap-2 pt-2">
@@ -538,6 +559,33 @@ export default function Upload() {
                   <option key={opt} value={opt}>{opt}</option>
                 ))}
               </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                インボイス番号
+                {isLowConfidence('invoice_number') && (
+                  <span className="ml-2 text-red-500 text-xs">要確認</span>
+                )}
+              </label>
+              <input
+                type="text"
+                value={formData.invoice_number}
+                onChange={(e) => setFormData({ ...formData, invoice_number: e.target.value })}
+                className={`w-full px-3 py-2 border rounded-md ${
+                  isLowConfidence('invoice_number')
+                    ? 'border-red-300 bg-red-50'
+                    : formData.invoice_number
+                    ? 'border-green-300 bg-green-50'
+                    : 'border-orange-300 bg-orange-50'
+                }`}
+                placeholder="例: T1234567890123"
+              />
+              {!formData.invoice_number && (
+                <p className="text-xs text-orange-600 mt-1">
+                  ※ T番号なしの場合、仕入税額控除が制限されます
+                </p>
+              )}
             </div>
           </div>
 
