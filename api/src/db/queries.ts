@@ -315,7 +315,7 @@ export async function getMonthlyChartData(
 
 // Admin queries
 export async function getCompaniesWithStats(db: D1Database): Promise<
-  (Company & { pending_count: number; confirmed_count: number; monthly_total: number })[]
+  (Company & { pending_count: number; confirmed_count: number; on_hold_count: number; monthly_total: number })[]
 > {
   const now = new Date();
   const startDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
@@ -326,6 +326,7 @@ export async function getCompaniesWithStats(db: D1Database): Promise<
          c.*,
          COALESCE(SUM(CASE WHEN t.status = 'pending' THEN 1 ELSE 0 END), 0) as pending_count,
          COALESCE(SUM(CASE WHEN t.status = 'confirmed' THEN 1 ELSE 0 END), 0) as confirmed_count,
+         COALESCE(SUM(CASE WHEN t.status = 'on_hold' THEN 1 ELSE 0 END), 0) as on_hold_count,
          COALESCE(SUM(CASE WHEN t.transaction_date >= ? THEN t.amount ELSE 0 END), 0) as monthly_total
        FROM companies c
        LEFT JOIN transactions t ON c.id = t.company_id
@@ -339,6 +340,7 @@ export async function getCompaniesWithStats(db: D1Database): Promise<
   return result.results as unknown as (Company & {
     pending_count: number;
     confirmed_count: number;
+    on_hold_count: number;
     monthly_total: number;
   })[];
 }

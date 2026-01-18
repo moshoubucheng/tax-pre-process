@@ -8,6 +8,7 @@ interface Company {
   name: string;
   pending_count: number;
   confirmed_count: number;
+  on_hold_count: number;
   monthly_total: number;
   settlement_color: 'normal' | 'yellow' | 'red';
   business_year_end: string | null;
@@ -73,6 +74,9 @@ export default function AdminPanel() {
 
   // Image lightbox
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+
+  // Transaction status filter
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'confirmed' | 'on_hold'>('all');
 
   useEffect(() => {
     loadCompanies();
@@ -174,8 +178,9 @@ export default function AdminPanel() {
     }
   }
 
-  async function openCompanyDetail(company: Company) {
+  async function openCompanyDetail(company: Company, filter?: 'pending' | 'confirmed' | 'on_hold') {
     setSelectedCompany(company);
+    setStatusFilter(filter || 'all');
     setLoadingTransactions(true);
     try {
       const res = await api.get<{ data: Transaction[] }>(`/admin/companies/${company.id}/transactions`);
@@ -192,6 +197,7 @@ export default function AdminPanel() {
     setSelectedCompany(null);
     setTransactions([]);
     setSelectedTxnIds(new Set());
+    setStatusFilter('all');
   }
 
   async function openTransactionDetail(txnId: string) {
@@ -467,6 +473,9 @@ export default function AdminPanel() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   要確認
                 </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  確認待ち
+                </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
                   アクション
                 </th>
@@ -500,11 +509,29 @@ export default function AdminPanel() {
                   <td className="px-6 py-4 whitespace-nowrap text-gray-600">
                     ¥{company.monthly_total.toLocaleString()}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-green-600">
-                    {company.confirmed_count}件
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <button
+                      onClick={() => openCompanyDetail(company, 'confirmed')}
+                      className="text-green-600 hover:underline"
+                    >
+                      {company.confirmed_count}件
+                    </button>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-orange-600">
-                    {company.pending_count}件
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <button
+                      onClick={() => openCompanyDetail(company, 'pending')}
+                      className="text-orange-600 hover:underline"
+                    >
+                      {company.pending_count}件
+                    </button>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <button
+                      onClick={() => openCompanyDetail(company, 'on_hold')}
+                      className="text-yellow-600 hover:underline"
+                    >
+                      {company.on_hold_count}件
+                    </button>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right space-x-3">
                     {company.pending_count > 0 && (
@@ -557,9 +584,25 @@ export default function AdminPanel() {
                 <span className="text-gray-600">¥{company.monthly_total.toLocaleString()}</span>
               </div>
               <div className="flex items-center justify-between text-sm">
-                <div className="flex gap-4">
-                  <span className="text-green-600">確認済: {company.confirmed_count}</span>
-                  <span className="text-orange-600">要確認: {company.pending_count}</span>
+                <div className="flex gap-3 flex-wrap">
+                  <button
+                    onClick={() => openCompanyDetail(company, 'confirmed')}
+                    className="text-green-600 hover:underline"
+                  >
+                    確認済: {company.confirmed_count}
+                  </button>
+                  <button
+                    onClick={() => openCompanyDetail(company, 'pending')}
+                    className="text-orange-600 hover:underline"
+                  >
+                    要確認: {company.pending_count}
+                  </button>
+                  <button
+                    onClick={() => openCompanyDetail(company, 'on_hold')}
+                    className="text-yellow-600 hover:underline"
+                  >
+                    確認待ち: {company.on_hold_count}
+                  </button>
                 </div>
                 <div className="flex gap-3">
                   {company.pending_count > 0 && (
@@ -597,10 +640,34 @@ export default function AdminPanel() {
             <div className="p-4 md:p-6 border-b border-gray-200 flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-semibold">{selectedCompany.name}</h2>
-                <div className="flex gap-4 mt-1 text-sm text-gray-600">
+                <div className="flex gap-4 mt-1 text-sm text-gray-600 flex-wrap">
                   <span>今月合計: ¥{selectedCompany.monthly_total.toLocaleString()}</span>
-                  <span className="text-green-600">確認済: {selectedCompany.confirmed_count}件</span>
-                  <span className="text-orange-600">要確認: {selectedCompany.pending_count}件</span>
+                  <button
+                    onClick={() => setStatusFilter('confirmed')}
+                    className={`${statusFilter === 'confirmed' ? 'underline font-medium' : ''} text-green-600 hover:underline`}
+                  >
+                    確認済: {selectedCompany.confirmed_count}件
+                  </button>
+                  <button
+                    onClick={() => setStatusFilter('pending')}
+                    className={`${statusFilter === 'pending' ? 'underline font-medium' : ''} text-orange-600 hover:underline`}
+                  >
+                    要確認: {selectedCompany.pending_count}件
+                  </button>
+                  <button
+                    onClick={() => setStatusFilter('on_hold')}
+                    className={`${statusFilter === 'on_hold' ? 'underline font-medium' : ''} text-yellow-600 hover:underline`}
+                  >
+                    確認待ち: {selectedCompany.on_hold_count}件
+                  </button>
+                  {statusFilter !== 'all' && (
+                    <button
+                      onClick={() => setStatusFilter('all')}
+                      className="text-gray-500 hover:underline"
+                    >
+                      全て表示
+                    </button>
+                  )}
                 </div>
               </div>
               <button
@@ -620,10 +687,22 @@ export default function AdminPanel() {
                 <div className="text-center py-12 text-gray-500">
                   取引データがありません
                 </div>
+              ) : transactions.filter(t => statusFilter === 'all' || t.status === statusFilter).length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  {statusFilter === 'confirmed' && '確認済の取引はありません'}
+                  {statusFilter === 'pending' && '要確認の取引はありません'}
+                  {statusFilter === 'on_hold' && '確認待ちの取引はありません'}
+                  <button
+                    onClick={() => setStatusFilter('all')}
+                    className="block mx-auto mt-2 text-primary-600 hover:underline text-sm"
+                  >
+                    全て表示
+                  </button>
+                </div>
               ) : (
                 <div className="space-y-3">
                   {/* Batch selection header */}
-                  {transactions.some(t => t.status === 'pending') && (
+                  {transactions.some(t => t.status === 'pending') && statusFilter !== 'confirmed' && statusFilter !== 'on_hold' && (
                     <div className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-lg">
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input
@@ -647,7 +726,9 @@ export default function AdminPanel() {
                     </div>
                   )}
 
-                  {transactions.map((txn) => (
+                  {transactions
+                    .filter(t => statusFilter === 'all' || t.status === statusFilter)
+                    .map((txn) => (
                     <div
                       key={txn.id}
                       className={`border rounded-lg p-4 hover:bg-gray-50 cursor-pointer ${
@@ -675,9 +756,11 @@ export default function AdminPanel() {
                               <span className={`text-xs px-2 py-0.5 rounded-full ${
                                 txn.status === 'confirmed'
                                   ? 'bg-green-100 text-green-700'
+                                  : txn.status === 'on_hold'
+                                  ? 'bg-yellow-100 text-yellow-700'
                                   : 'bg-orange-100 text-orange-700'
                               }`}>
-                                {txn.status === 'confirmed' ? '確認済' : '要確認'}
+                                {txn.status === 'confirmed' ? '確認済' : txn.status === 'on_hold' ? '確認待ち' : '要確認'}
                               </span>
                               {txn.confidence < 80 && (
                                 <span className="text-xs text-orange-600">
