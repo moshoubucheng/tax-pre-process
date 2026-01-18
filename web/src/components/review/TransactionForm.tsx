@@ -55,11 +55,6 @@ const TransactionForm = forwardRef<TransactionFormRef, TransactionFormProps>(({
     setHasChanges(true);
   }
 
-  function handleSave() {
-    onSave(formData);
-    setHasChanges(false);
-  }
-
   function handleConfirmWithSave() {
     if (hasChanges) {
       onSave(formData);
@@ -221,13 +216,6 @@ const TransactionForm = forwardRef<TransactionFormRef, TransactionFormProps>(({
       {/* Action Buttons */}
       <div className="p-4 border-t border-gray-200 space-y-2">
         <div className="flex gap-2">
-          <button
-            onClick={handleSave}
-            disabled={saving || !hasChanges}
-            className="flex-1 py-2 px-4 bg-gray-600 text-white rounded-md disabled:opacity-50 hover:bg-gray-700 text-sm"
-          >
-            {saving ? '保存中...' : '保存'}
-          </button>
           {status === 'pending' && (
             <button
               onClick={handleConfirmWithSave}
