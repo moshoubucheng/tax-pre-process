@@ -201,16 +201,16 @@ transactions.put('/:id', async (c) => {
       return c.json({ error: '確認済みの取引は変更できません' }, 403);
     }
 
-    // Update allowed fields
-    const updateData: Record<string, unknown> = {
-      transaction_date: body.transaction_date,
-      amount: body.amount,
-      vendor_name: body.vendor_name,
-      account_debit: body.account_debit,
-      account_credit: body.account_credit,
-      tax_category: body.tax_category,
-      description: body.description,
-    };
+    // Update allowed fields - only include if explicitly provided
+    const updateData: Record<string, unknown> = {};
+
+    if (body.transaction_date !== undefined) updateData.transaction_date = body.transaction_date;
+    if (body.amount !== undefined) updateData.amount = body.amount;
+    if (body.vendor_name !== undefined) updateData.vendor_name = body.vendor_name;
+    if (body.account_debit !== undefined) updateData.account_debit = body.account_debit;
+    if (body.account_credit !== undefined) updateData.account_credit = body.account_credit;
+    if (body.tax_category !== undefined) updateData.tax_category = body.tax_category;
+    if (body.description !== undefined) updateData.description = body.description;
 
     // Admin can change status and set admin_note
     if (user.role === 'admin') {
@@ -226,13 +226,19 @@ transactions.put('/:id', async (c) => {
       updateData.status = 'pending';
     }
 
+    // Skip update if no fields to update
+    if (Object.keys(updateData).length === 0) {
+      return c.json({ data: transaction });
+    }
+
     await updateTransaction(c.env.DB, id, updateData);
 
     const updated = await getTransactionById(c.env.DB, id);
     return c.json({ data: updated });
   } catch (error) {
     console.error('Update transaction error:', error);
-    return c.json({ error: '取引の更新に失敗しました' }, 500);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return c.json({ error: `取引の更新に失敗しました: ${errorMessage}` }, 500);
   }
 });
 
