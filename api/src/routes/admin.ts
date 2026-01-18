@@ -24,6 +24,60 @@ const admin = new Hono<{ Bindings: Env }>();
 admin.use('*', authMiddleware);
 admin.use('*', adminOnly);
 
+// GET /api/admin/stats - Get global admin stats
+admin.get('/stats', async (c) => {
+  try {
+    // Get pending count (all transactions with status = 'pending')
+    const pendingResult = await c.env.DB.prepare(
+      `SELECT COUNT(*) as count FROM transactions WHERE status = 'pending'`
+    ).first<{ count: number }>();
+
+    // Get on_hold count (all transactions with status = 'on_hold')
+    const onHoldResult = await c.env.DB.prepare(
+      `SELECT COUNT(*) as count FROM transactions WHERE status = 'on_hold'`
+    ).first<{ count: number }>();
+
+    // Get settlement alerts count
+    const companies = await getCompaniesWithStats(c.env.DB);
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1;
+    const currentDay = now.getDate();
+
+    let settlementAlerts = 0;
+    for (const company of companies) {
+      const docs = await getCompanyDocuments(c.env.DB, company.id);
+      if (docs && docs.business_year_end && docs.settlement_confirmed !== 1) {
+        const endMonth = parseInt(docs.business_year_end);
+        let monthsSinceEnd = 0;
+
+        if (currentMonth === endMonth && currentDay >= 15) {
+          monthsSinceEnd = 1;
+        } else if (currentMonth > endMonth || (currentMonth < endMonth && currentMonth + 12 - endMonth <= 2)) {
+          if (currentMonth > endMonth) {
+            monthsSinceEnd = currentMonth - endMonth;
+          } else {
+            monthsSinceEnd = currentMonth + 12 - endMonth;
+          }
+          if (monthsSinceEnd > 2) monthsSinceEnd = 0;
+        }
+
+        if (monthsSinceEnd >= 1) {
+          settlementAlerts++;
+        }
+      }
+    }
+
+    return c.json({
+      pending_count: pendingResult?.count || 0,
+      on_hold_count: onHoldResult?.count || 0,
+      settlement_alerts: settlementAlerts,
+    });
+  } catch (error) {
+    console.error('Get admin stats error:', error);
+    return c.json({ error: '統計の取得に失敗しました' }, 500);
+  }
+});
+
 // GET /api/admin/companies - List all companies with stats
 admin.get('/companies', async (c) => {
   try {

@@ -38,7 +38,7 @@ export interface Transaction {
   tax_category: string | null;
   ai_confidence: number | null;
   ai_raw_response: string | null;
-  status: 'pending' | 'confirmed';
+  status: 'pending' | 'confirmed' | 'on_hold';
   created_at: string;
 }
 
