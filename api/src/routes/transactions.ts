@@ -212,12 +212,17 @@ transactions.put('/:id', async (c) => {
       description: body.description,
     };
 
-    // Admin can change status freely
-    if (user.role === 'admin' && body.status) {
-      updateData.status = body.status;
+    // Admin can change status and set admin_note
+    if (user.role === 'admin') {
+      if (body.status) {
+        updateData.status = body.status;
+      }
+      if (body.admin_note !== undefined) {
+        updateData.admin_note = body.admin_note;
+      }
     }
     // Client can reply to on_hold items (changes status to pending)
-    else if (user.role !== 'admin' && transaction.status === 'on_hold' && body.reply === true) {
+    else if (transaction.status === 'on_hold' && body.reply === true) {
       updateData.status = 'pending';
     }
 

@@ -39,6 +39,8 @@ export default function ReviewStation() {
   const [batchConfirming, setBatchConfirming] = useState(false);
   const [showRevertModal, setShowRevertModal] = useState(false);
   const [reverting, setReverting] = useState(false);
+  const [showHoldModal, setShowHoldModal] = useState(false);
+  const [adminNote, setAdminNote] = useState('');
 
   // Load company and transactions
   useEffect(() => {
@@ -258,12 +260,21 @@ export default function ReviewStation() {
     }
   }
 
-  // Hold handler (set transaction to on_hold for client feedback)
-  async function handleHold() {
+  // Show hold modal (for admin to enter note)
+  function handleHold() {
+    setAdminNote('');
+    setShowHoldModal(true);
+  }
+
+  // Submit hold with admin note
+  async function submitHold() {
     if (!selectedId) return;
     setSaving(true);
     try {
-      await api.put(`/transactions/${selectedId}`, { status: 'on_hold' });
+      await api.put(`/transactions/${selectedId}`, {
+        status: 'on_hold',
+        admin_note: adminNote || null,
+      });
       // Update local state
       setTransactions((prev) =>
         prev.map((t) =>
@@ -273,6 +284,8 @@ export default function ReviewStation() {
       if (selectedTransaction) {
         setSelectedTransaction({ ...selectedTransaction, status: 'on_hold' });
       }
+      setShowHoldModal(false);
+      setAdminNote('');
       // Move to next pending
       setTimeout(() => goToNextPending(), 100);
     } catch (err) {
@@ -407,7 +420,7 @@ export default function ReviewStation() {
               </div>
 
               {/* Form Panel */}
-              <div className="lg:w-96 bg-white border-t lg:border-t-0 lg:border-l border-gray-200 flex-shrink-0">
+              <div className="lg:w-96 bg-white border-t lg:border-t-0 lg:border-l border-gray-200 flex-shrink-0 overflow-auto max-h-[50vh] lg:max-h-full">
                 {loadingDetail ? (
                   <div className="flex items-center justify-center h-full">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
@@ -453,6 +466,42 @@ export default function ReviewStation() {
         mode="single"
         processing={reverting}
       />
+
+      {/* Hold Modal - Admin enters note for client */}
+      {showHoldModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">確認依頼</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              この取引を「確認待ち」に設定します。<br />
+              お客様へのメッセージを入力してください（任意）。
+            </p>
+            <textarea
+              value={adminNote}
+              onChange={(e) => setAdminNote(e.target.value)}
+              placeholder="例: この支出の使途を教えてください"
+              rows={3}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-500 mb-4"
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowHoldModal(false)}
+                disabled={saving}
+                className="flex-1 py-2 px-4 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={submitHold}
+                disabled={saving}
+                className="flex-1 py-2 px-4 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 disabled:opacity-50"
+              >
+                {saving ? '送信中...' : '確認依頼を送信'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

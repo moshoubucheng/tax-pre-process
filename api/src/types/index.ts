@@ -39,6 +39,7 @@ export interface Transaction {
   ai_confidence: number | null;
   ai_raw_response: string | null;
   description: string | null;
+  admin_note: string | null;
   status: 'pending' | 'confirmed' | 'on_hold';
   created_at: string;
 }

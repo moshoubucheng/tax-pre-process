@@ -42,6 +42,7 @@ interface TransactionDetail {
   tax_category: string | null;
   ai_confidence: number | null;
   description: string | null;
+  admin_note: string | null;
   status: 'pending' | 'confirmed' | 'on_hold';
   image_key: string;
   created_at: string;
@@ -693,6 +694,13 @@ export default function ClientDashboard() {
                         </svg>
                         <span className="font-semibold">確認依頼</span>
                       </div>
+                      {/* Admin Note Display */}
+                      {selectedTxn.admin_note && (
+                        <div className="bg-white border border-yellow-300 rounded-md p-3">
+                          <p className="text-xs text-gray-500 mb-1">管理者からのメッセージ:</p>
+                          <p className="text-sm text-gray-800">{selectedTxn.admin_note}</p>
+                        </div>
+                      )}
                       <p className="text-sm text-yellow-700">
                         この取引の使途（何に使ったか）を教えてください。
                       </p>

@@ -105,6 +105,7 @@ upload.post('/', async (c) => {
       ai_confidence: aiResult.confidence,
       ai_raw_response: aiResult.raw_response || null,
       description: null,
+      admin_note: null,
       status: aiResult.confidence >= 70 ? 'pending' : 'pending', // Always pending, user must confirm
     });
 
@@ -205,6 +206,7 @@ upload.post('/manual', async (c) => {
       ai_confidence: null, // No AI for manual input
       ai_raw_response: null,
       description: null,
+      admin_note: null,
       status: 'pending',
     });
 
