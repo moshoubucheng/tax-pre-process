@@ -13,6 +13,7 @@ import Documents from './pages/Documents';
 import AdminDocuments from './pages/AdminDocuments';
 import Settings from './pages/Settings';
 import ReviewStation from './pages/ReviewStation';
+import AuditSearch from './pages/AuditSearch';
 import Layout from './components/layout/Layout';
 
 // Client-specific pages (admin viewing a client)
@@ -140,6 +141,15 @@ function AppRoutes() {
         <PrivateRoute>
           <Layout>
             <Settings />
+          </Layout>
+        </PrivateRoute>
+      } />
+
+      {/* Audit Search - 証憑検索 (Electronic Bookkeeping Preservation Act compliance) */}
+      <Route path="/search" element={
+        <PrivateRoute>
+          <Layout>
+            <AuditSearch />
           </Layout>
         </PrivateRoute>
       } />
