@@ -17,12 +17,12 @@ interface Company {
 
 interface Transaction {
   id: string;
-  date: string;
-  amount: number;
-  vendor: string;
-  account_category: string;
+  transaction_date: string | null;
+  amount: number | null;
+  vendor_name: string | null;
+  account_debit: string | null;
   status: string;
-  confidence: number;
+  ai_confidence: number | null;
   created_at: string;
   company_name?: string;
   company_id?: string;
@@ -836,7 +836,7 @@ export default function AdminPanel() {
                           )}
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
-                              <span className="font-medium">{txn.vendor || '不明'}</span>
+                              <span className="font-medium">{txn.vendor_name || '不明'}</span>
                               <span className={`text-xs px-2 py-0.5 rounded-full ${
                                 txn.status === 'confirmed'
                                   ? 'bg-green-100 text-green-700'
@@ -846,21 +846,21 @@ export default function AdminPanel() {
                               }`}>
                                 {txn.status === 'confirmed' ? '確認済' : txn.status === 'on_hold' ? '確認待ち' : '要確認'}
                               </span>
-                              {txn.confidence < 80 && (
+                              {(txn.ai_confidence ?? 100) < 80 && (
                                 <span className="text-xs text-orange-600">
-                                  信頼度: {txn.confidence}%
+                                  信頼度: {txn.ai_confidence}%
                                 </span>
                               )}
                             </div>
                             <div className="text-sm text-gray-600">
-                              <span>{txn.date}</span>
+                              <span>{txn.transaction_date || '不明'}</span>
                               <span className="mx-2">·</span>
-                              <span>{txn.account_category || '未分類'}</span>
+                              <span>{txn.account_debit || '未分類'}</span>
                             </div>
                           </div>
                         </div>
                         <div className="text-right flex items-center gap-3">
-                          <span className="font-semibold">¥{txn.amount.toLocaleString()}</span>
+                          <span className="font-semibold">¥{(txn.amount ?? 0).toLocaleString()}</span>
                           {txn.status === 'pending' && (
                             <button
                               onClick={(e) => {
@@ -1137,7 +1137,7 @@ export default function AdminPanel() {
                             <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">
                               {txn.company_name}
                             </span>
-                            <span className="font-medium">{txn.vendor || '不明'}</span>
+                            <span className="font-medium">{txn.vendor_name || '不明'}</span>
                             <span className={`text-xs px-2 py-0.5 rounded-full ${
                               txn.status === 'on_hold'
                                 ? 'bg-yellow-100 text-yellow-700'
@@ -1147,13 +1147,13 @@ export default function AdminPanel() {
                             </span>
                           </div>
                           <div className="text-sm text-gray-600">
-                            <span>{txn.date}</span>
+                            <span>{txn.transaction_date || '不明'}</span>
                             <span className="mx-2">·</span>
-                            <span>{txn.account_category || '未分類'}</span>
+                            <span>{txn.account_debit || '未分類'}</span>
                           </div>
                         </div>
                         <div className="text-right flex items-center gap-3">
-                          <span className="font-semibold">¥{txn.amount.toLocaleString()}</span>
+                          <span className="font-semibold">¥{(txn.amount ?? 0).toLocaleString()}</span>
                           <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                           </svg>
