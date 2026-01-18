@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import { useKeyboardShortcuts, REVIEW_SHORTCUTS } from '../hooks/useKeyboardShortcuts';
 import ImagePanel from '../components/review/ImagePanel';
-import TransactionForm, { TransactionFormData, TransactionFormRef } from '../components/review/TransactionForm';
+import TransactionForm, { TransactionFormData, TransactionFormRef, SelectedAction } from '../components/review/TransactionForm';
 import ConfidenceGroup, { TransactionItem } from '../components/review/ConfidenceGroup';
 import ConfirmRevertModal from '../components/ConfirmRevertModal';
 
@@ -57,6 +57,9 @@ export default function ReviewStation() {
   // Ref for TransactionForm to call confirmWithSave
   const formRef = useRef<TransactionFormRef>(null);
 
+  // Selected action for keyboard navigation
+  const [selectedAction, setSelectedAction] = useState<SelectedAction>('none');
+
   // Load company and transactions
   useEffect(() => {
     if (!companyId) return;
@@ -99,6 +102,7 @@ export default function ReviewStation() {
       return;
     }
     loadTransactionDetail(selectedId);
+    setSelectedAction('none'); // Reset selection when changing transaction
   }, [selectedId]);
 
   async function loadTransactionDetail(id: string) {
@@ -344,7 +348,13 @@ export default function ReviewStation() {
   useKeyboardShortcuts([
     {
       ...REVIEW_SHORTCUTS.ESCAPE,
-      handler: () => navigate('/'),
+      handler: () => {
+        if (selectedAction !== 'none') {
+          setSelectedAction('none'); // Cancel selection
+        } else {
+          navigate('/'); // Go back if nothing selected
+        }
+      },
     },
     {
       ...REVIEW_SHORTCUTS.PREV,
@@ -358,7 +368,7 @@ export default function ReviewStation() {
       ...REVIEW_SHORTCUTS.HOLD,
       handler: () => {
         if (selectedTransaction?.status === 'pending') {
-          handleHold();
+          setSelectedAction('hold');
         }
       },
     },
@@ -366,15 +376,20 @@ export default function ReviewStation() {
       ...REVIEW_SHORTCUTS.CONFIRM,
       handler: () => {
         if (selectedTransaction?.status === 'pending') {
-          formRef.current?.confirmWithSave();
+          setSelectedAction('confirm');
         }
       },
     },
     {
       ...REVIEW_SHORTCUTS.CONFIRM_NEXT,
       handler: () => {
-        if (selectedTransaction?.status === 'pending') {
-          formRef.current?.confirmWithSave();
+        if (selectedTransaction?.status === 'pending' && selectedAction !== 'none') {
+          if (selectedAction === 'confirm') {
+            formRef.current?.confirmWithSave();
+          } else if (selectedAction === 'hold') {
+            handleHold();
+          }
+          setSelectedAction('none');
         }
       },
     },
@@ -500,6 +515,7 @@ export default function ReviewStation() {
                       aiConfidence={selectedTransaction.ai_confidence}
                       status={selectedTransaction.status}
                       saving={saving}
+                      selectedAction={selectedAction}
                       onSave={handleSave}
                       onConfirm={handleConfirm}
                       onRevert={() => setShowRevertModal(true)}

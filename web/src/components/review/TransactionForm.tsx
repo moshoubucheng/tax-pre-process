@@ -11,7 +11,10 @@ export interface TransactionFormData {
 
 export interface TransactionFormRef {
   confirmWithSave: () => void;
+  holdAction: () => void;
 }
+
+export type SelectedAction = 'none' | 'hold' | 'confirm';
 
 interface TransactionFormProps {
   data: TransactionFormData;
@@ -19,6 +22,7 @@ interface TransactionFormProps {
   lowConfidenceFields?: string[];
   status: 'pending' | 'confirmed' | 'on_hold';
   saving: boolean;
+  selectedAction?: SelectedAction;
   onSave: (data: TransactionFormData) => void;
   onConfirm: () => void;
   onRevert?: () => void;
@@ -31,6 +35,7 @@ const TransactionForm = forwardRef<TransactionFormRef, TransactionFormProps>(({
   lowConfidenceFields = [],
   status,
   saving,
+  selectedAction = 'none',
   onSave,
   onConfirm,
   onRevert,
@@ -63,9 +68,10 @@ const TransactionForm = forwardRef<TransactionFormRef, TransactionFormProps>(({
     onConfirm();
   }
 
-  // Expose confirmWithSave to parent via ref
+  // Expose methods to parent via ref
   useImperativeHandle(ref, () => ({
     confirmWithSave: handleConfirmWithSave,
+    holdAction: () => onHold?.(),
   }));
 
   function isLowConfidence(field: string): boolean {
@@ -226,7 +232,11 @@ const TransactionForm = forwardRef<TransactionFormRef, TransactionFormProps>(({
             <button
               onClick={handleConfirmWithSave}
               disabled={saving}
-              className="flex-1 py-2 px-4 bg-green-600 text-white rounded-md disabled:opacity-50 hover:bg-green-700 text-sm"
+              className={`flex-1 py-2 px-4 text-white rounded-md disabled:opacity-50 text-sm transition-all ${
+                selectedAction === 'confirm'
+                  ? 'bg-green-700 ring-2 ring-green-400 ring-offset-1'
+                  : 'bg-green-600 hover:bg-green-700'
+              }`}
             >
               確認 (→)
             </button>
@@ -255,13 +265,17 @@ const TransactionForm = forwardRef<TransactionFormRef, TransactionFormProps>(({
           <button
             onClick={onHold}
             disabled={saving}
-            className="w-full py-2 px-4 bg-yellow-500 text-white rounded-md disabled:opacity-50 hover:bg-yellow-600 text-sm"
+            className={`w-full py-2 px-4 text-white rounded-md disabled:opacity-50 text-sm transition-all ${
+              selectedAction === 'hold'
+                ? 'bg-yellow-600 ring-2 ring-yellow-400 ring-offset-1'
+                : 'bg-yellow-500 hover:bg-yellow-600'
+            }`}
           >
             確認依頼 (←)
           </button>
         )}
         <div className="text-xs text-gray-500 text-center">
-          ↑↓ 前後の取引、← 確認依頼 / → 確認、Esc 戻る
+          ↑↓ 前後の取引、←/→ 選択、Enter 実行、Esc 取消
         </div>
       </div>
     </div>
