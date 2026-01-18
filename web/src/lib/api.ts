@@ -1,5 +1,8 @@
-// Use VITE_API_URL from environment variable, fallback to /api for development
-const API_BASE = import.meta.env.VITE_API_URL || '/api';
+// Use VITE_API_URL from environment variable
+// In production, fallback to the Workers URL if not set
+// In development, fallback to /api (proxied by Vite)
+const API_BASE = import.meta.env.VITE_API_URL
+  || (import.meta.env.PROD ? 'https://tax-api.759nxrb6x4-bc3.workers.dev/api' : '/api');
 
 class ApiClient {
   private getHeaders(): HeadersInit {
