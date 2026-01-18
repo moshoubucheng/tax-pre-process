@@ -61,8 +61,8 @@ interface Message {
 }
 
 interface FinancialSummary {
-  year: number;
-  month: number;
+  start_date: string;
+  end_date: string;
   confirmed: {
     income: number;
     expense: number;
@@ -77,6 +77,71 @@ interface FinancialSummary {
   };
   monthly_trend: { month: string; income: number; expense: number }[];
   expense_breakdown: { name: string; value: number }[];
+}
+
+type DateRangePreset = 'this_month' | 'last_month' | 'last_3_months' | 'last_6_months' | 'this_year' | 'custom';
+
+const DATE_RANGE_PRESETS: { value: DateRangePreset; label: string }[] = [
+  { value: 'this_month', label: '当月' },
+  { value: 'last_month', label: '前月' },
+  { value: 'last_3_months', label: '過去3ヶ月' },
+  { value: 'last_6_months', label: '過去6ヶ月' },
+  { value: 'this_year', label: '今年' },
+  { value: 'custom', label: 'カスタム' },
+];
+
+function getDateRangeFromPreset(preset: DateRangePreset): { startDate: string; endDate: string } {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+
+  switch (preset) {
+    case 'this_month': {
+      const start = new Date(year, month, 1);
+      const end = new Date(year, month + 1, 0);
+      return {
+        startDate: start.toISOString().split('T')[0],
+        endDate: end.toISOString().split('T')[0],
+      };
+    }
+    case 'last_month': {
+      const start = new Date(year, month - 1, 1);
+      const end = new Date(year, month, 0);
+      return {
+        startDate: start.toISOString().split('T')[0],
+        endDate: end.toISOString().split('T')[0],
+      };
+    }
+    case 'last_3_months': {
+      const start = new Date(year, month - 2, 1);
+      const end = new Date(year, month + 1, 0);
+      return {
+        startDate: start.toISOString().split('T')[0],
+        endDate: end.toISOString().split('T')[0],
+      };
+    }
+    case 'last_6_months': {
+      const start = new Date(year, month - 5, 1);
+      const end = new Date(year, month + 1, 0);
+      return {
+        startDate: start.toISOString().split('T')[0],
+        endDate: end.toISOString().split('T')[0],
+      };
+    }
+    case 'this_year': {
+      const start = new Date(year, 0, 1);
+      const end = new Date(year, 11, 31);
+      return {
+        startDate: start.toISOString().split('T')[0],
+        endDate: end.toISOString().split('T')[0],
+      };
+    }
+    default:
+      return {
+        startDate: new Date(year, month, 1).toISOString().split('T')[0],
+        endDate: new Date(year, month + 1, 0).toISOString().split('T')[0],
+      };
+  }
 }
 
 // Colors for pie chart
@@ -150,18 +215,28 @@ export default function ClientDashboard() {
 
   // Financial Summary (BI)
   const [financialSummary, setFinancialSummary] = useState<FinancialSummary | null>(null);
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+  const [dateRangePreset, setDateRangePreset] = useState<DateRangePreset>('this_month');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
   const [loadingFinancial, setLoadingFinancial] = useState(false);
 
   useEffect(() => {
     loadDashboard();
   }, []);
 
-  // Load financial summary when year/month changes
+  // Load financial summary when date range changes
   useEffect(() => {
-    loadFinancialSummary();
-  }, [selectedYear, selectedMonth]);
+    if (dateRangePreset !== 'custom') {
+      loadFinancialSummary();
+    }
+  }, [dateRangePreset]);
+
+  // Load financial summary for custom date range
+  function handleCustomDateSearch() {
+    if (customStartDate && customEndDate) {
+      loadFinancialSummary(customStartDate, customEndDate);
+    }
+  }
 
   async function loadDashboard() {
     try {
@@ -186,11 +261,23 @@ export default function ClientDashboard() {
     }
   }
 
-  async function loadFinancialSummary() {
+  async function loadFinancialSummary(startDateOverride?: string, endDateOverride?: string) {
     setLoadingFinancial(true);
     try {
+      let startDate: string;
+      let endDate: string;
+
+      if (startDateOverride && endDateOverride) {
+        startDate = startDateOverride;
+        endDate = endDateOverride;
+      } else {
+        const range = getDateRangeFromPreset(dateRangePreset);
+        startDate = range.startDate;
+        endDate = range.endDate;
+      }
+
       const res = await api.get<FinancialSummary>(
-        `/dashboard/financial-summary?year=${selectedYear}&month=${selectedMonth}`
+        `/dashboard/financial-summary?start_date=${startDate}&end_date=${endDate}`
       );
       setFinancialSummary(res);
     } catch (err) {
@@ -500,30 +587,59 @@ export default function ClientDashboard() {
 
       {/* ===== Financial Summary Section (BI Dashboard) ===== */}
       <div className="bg-white rounded-lg shadow-sm p-4 md:p-6">
-        {/* Header with Year/Month Selector */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-          <h2 className="text-lg font-semibold text-gray-900">財務サマリー</h2>
-          <div className="flex items-center gap-2">
-            <select
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(Number(e.target.value))}
-              className="px-3 py-1.5 border border-gray-300 rounded-md text-sm"
-            >
-              {[0, 1, 2].map((offset) => {
-                const year = new Date().getFullYear() - offset;
-                return <option key={year} value={year}>{year}年</option>;
-              })}
-            </select>
-            <select
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(Number(e.target.value))}
-              className="px-3 py-1.5 border border-gray-300 rounded-md text-sm"
-            >
-              {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
-                <option key={month} value={month}>{month}月</option>
+        {/* Header with Date Range Selector */}
+        <div className="flex flex-col gap-4 mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <h2 className="text-lg font-semibold text-gray-900">財務サマリー</h2>
+            <div className="flex flex-wrap items-center gap-2">
+              {DATE_RANGE_PRESETS.map((preset) => (
+                <button
+                  key={preset.value}
+                  onClick={() => setDateRangePreset(preset.value)}
+                  className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+                    dateRangePreset === preset.value
+                      ? 'bg-primary-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  {preset.label}
+                </button>
               ))}
-            </select>
+            </div>
           </div>
+
+          {/* Custom Date Range Picker */}
+          {dateRangePreset === 'custom' && (
+            <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-gray-200">
+              <input
+                type="date"
+                value={customStartDate}
+                onChange={(e) => setCustomStartDate(e.target.value)}
+                className="px-3 py-1.5 border border-gray-300 rounded-md text-sm"
+              />
+              <span className="text-gray-500">〜</span>
+              <input
+                type="date"
+                value={customEndDate}
+                onChange={(e) => setCustomEndDate(e.target.value)}
+                className="px-3 py-1.5 border border-gray-300 rounded-md text-sm"
+              />
+              <button
+                onClick={handleCustomDateSearch}
+                disabled={!customStartDate || !customEndDate}
+                className="px-4 py-1.5 bg-primary-600 text-white rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                検索
+              </button>
+            </div>
+          )}
+
+          {/* Show current date range */}
+          {financialSummary && (
+            <p className="text-sm text-gray-500">
+              期間: {financialSummary.start_date} 〜 {financialSummary.end_date}
+            </p>
+          )}
         </div>
 
         {loadingFinancial ? (
@@ -637,7 +753,7 @@ export default function ClientDashboard() {
 
               {/* Expense Breakdown Pie Chart */}
               <div className="bg-gray-50 rounded-lg p-4">
-                <h3 className="text-sm font-medium text-gray-700 mb-4">経費内訳（当月Top5）</h3>
+                <h3 className="text-sm font-medium text-gray-700 mb-4">経費内訳（Top5）</h3>
                 {financialSummary.expense_breakdown.length > 0 ? (
                   <ResponsiveContainer width="100%" height={200}>
                     <PieChart>

@@ -186,6 +186,7 @@ dashboard.get('/confirmed', async (c) => {
 });
 
 // GET /api/dashboard/financial-summary - Get financial summary for BI dashboard
+// Supports: start_date & end_date (YYYY-MM-DD) OR year & month for backward compatibility
 dashboard.get('/financial-summary', async (c) => {
   try {
     const user = c.get('user');
@@ -194,16 +195,28 @@ dashboard.get('/financial-summary', async (c) => {
       return c.json({ error: '会社情報が見つかりません' }, 400);
     }
 
-    const { year: yearParam, month: monthParam } = c.req.query();
+    const { start_date, end_date, year: yearParam, month: monthParam } = c.req.query();
     const now = new Date();
-    const year = yearParam ? parseInt(yearParam) : now.getFullYear();
-    const month = monthParam ? parseInt(monthParam) : now.getMonth() + 1;
 
-    // Current month date range
-    const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
-    const endDate = month === 12
-      ? `${year + 1}-01-01`
-      : `${year}-${String(month + 1).padStart(2, '0')}-01`;
+    let startDate: string;
+    let endDate: string;
+
+    if (start_date && end_date) {
+      // Use provided date range
+      startDate = start_date;
+      // end_date is inclusive, so add 1 day for SQL comparison
+      const endDateObj = new Date(end_date);
+      endDateObj.setDate(endDateObj.getDate() + 1);
+      endDate = endDateObj.toISOString().split('T')[0];
+    } else {
+      // Fallback to year/month for backward compatibility
+      const year = yearParam ? parseInt(yearParam) : now.getFullYear();
+      const month = monthParam ? parseInt(monthParam) : now.getMonth() + 1;
+      startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+      endDate = month === 12
+        ? `${year + 1}-01-01`
+        : `${year}-${String(month + 1).padStart(2, '0')}-01`;
+    }
 
     // Get current month totals by type (only confirmed transactions for accurate reporting)
     const monthlyTotals = await c.env.DB
@@ -268,9 +281,22 @@ dashboard.get('/financial-summary', async (c) => {
       }
     }
 
-    // Last 6 months trend (income vs expense)
-    const sixMonthsAgo = new Date(year, month - 7, 1);
-    const trendStartDate = `${sixMonthsAgo.getFullYear()}-${String(sixMonthsAgo.getMonth() + 1).padStart(2, '0')}-01`;
+    // Monthly trend - calculate based on the selected range or last 12 months
+    const startDateObj = new Date(startDate);
+    const endDateObj = new Date(endDate);
+    const rangeDays = Math.ceil((endDateObj.getTime() - startDateObj.getTime()) / (1000 * 60 * 60 * 24));
+
+    // For trend, show at least 6 months, or match the range if it's longer
+    let trendStartDate: string;
+    if (rangeDays > 180) {
+      // If range is > 6 months, use the start of the range
+      trendStartDate = startDate;
+    } else {
+      // Otherwise show last 6 months from end date
+      const trendStart = new Date(endDateObj);
+      trendStart.setMonth(trendStart.getMonth() - 6);
+      trendStartDate = `${trendStart.getFullYear()}-${String(trendStart.getMonth() + 1).padStart(2, '0')}-01`;
+    }
 
     const monthlyTrend = await c.env.DB
       .prepare(`
@@ -333,9 +359,13 @@ dashboard.get('/financial-summary', async (c) => {
     // 消費税 = 売上の税額 - 仕入の税額 (簡易計算)
     const taxEstimate = Math.max(0, incomeTax - expenseTax);
 
+    // Return end_date as the actual end (subtract 1 day since we added 1 for SQL)
+    const actualEndDate = new Date(endDate);
+    actualEndDate.setDate(actualEndDate.getDate() - 1);
+
     return c.json({
-      year,
-      month,
+      start_date: startDate,
+      end_date: actualEndDate.toISOString().split('T')[0],
       // Confirmed amounts
       confirmed: {
         income: totalIncome,
