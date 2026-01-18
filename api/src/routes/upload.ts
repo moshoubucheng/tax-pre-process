@@ -104,6 +104,7 @@ upload.post('/', async (c) => {
       tax_category: aiResult.tax_category,
       ai_confidence: aiResult.confidence,
       ai_raw_response: aiResult.raw_response || null,
+      description: null,
       status: aiResult.confidence >= 70 ? 'pending' : 'pending', // Always pending, user must confirm
     });
 
@@ -203,6 +204,7 @@ upload.post('/manual', async (c) => {
       tax_category: tax_category || null,
       ai_confidence: null, // No AI for manual input
       ai_raw_response: null,
+      description: null,
       status: 'pending',
     });
 
