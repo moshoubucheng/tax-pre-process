@@ -218,6 +218,14 @@ export async function updateTransaction(
     fields.push('tax_category = ?');
     values.push(updates.tax_category);
   }
+  if (updates.description !== undefined) {
+    fields.push('description = ?');
+    values.push(updates.description);
+  }
+  if (updates.admin_note !== undefined) {
+    fields.push('admin_note = ?');
+    values.push(updates.admin_note);
+  }
   if (updates.status !== undefined) {
     fields.push('status = ?');
     values.push(updates.status);
