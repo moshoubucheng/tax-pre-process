@@ -196,6 +196,20 @@ upload.post('/manual', async (c) => {
       return c.json({ error: '日付と金額は必須です' }, 400);
     }
 
+    // Validate amount: must be positive integer within reasonable range
+    const amountNum = parseInt(amount);
+    if (isNaN(amountNum) || amountNum <= 0) {
+      return c.json({ error: '金額は1円以上の正の整数を入力してください' }, 400);
+    }
+    if (amountNum > 999999999) {
+      return c.json({ error: '金額が大きすぎます（上限: 999,999,999円）' }, 400);
+    }
+
+    // Validate transaction date format (YYYY-MM-DD)
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(transaction_date)) {
+      return c.json({ error: '日付の形式が正しくありません (YYYY-MM-DD)' }, 400);
+    }
+
     // Parse tax_rate (default 10)
     const tax_rate = tax_rate_str ? parseInt(tax_rate_str) : 10;
 
@@ -233,7 +247,7 @@ upload.post('/manual', async (c) => {
       image_uploaded_at: timestamp,
       type: transactionType,
       transaction_date: transaction_date,
-      amount: parseInt(amount) || 0,
+      amount: amountNum,
       vendor_name: vendor_name || null,
       account_debit: account_debit || defaultAccountDebit,
       account_credit: account_credit || defaultAccountCredit,

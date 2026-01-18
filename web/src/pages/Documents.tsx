@@ -106,9 +106,7 @@ export default function Documents() {
       formData.append('file', file);
 
       const token = localStorage.getItem('token');
-      const baseUrl = import.meta.env.PROD
-        ? 'https://tax-api.759nxrb6x4-bc3.workers.dev/api'
-        : '/api';
+      const baseUrl = import.meta.env.VITE_API_URL || '/api';
 
       const res = await fetch(`${baseUrl}/documents/upload/${field}`, {
         method: 'POST',
@@ -151,9 +149,7 @@ export default function Documents() {
 
   function getFileUrl(field: string): string {
     const token = localStorage.getItem('token');
-    const baseUrl = import.meta.env.PROD
-      ? 'https://tax-api.759nxrb6x4-bc3.workers.dev/api'
-      : '/api';
+    const baseUrl = import.meta.env.VITE_API_URL || '/api';
     return `${baseUrl}/documents/file/${field}?token=${token}`;
   }
 

@@ -50,9 +50,18 @@ transactions.get('/', async (c) => {
       return c.json({ error: 'Company not found' }, 400);
     }
 
+    // Validate and cap limit to prevent performance issues
+    const MAX_LIMIT = 500;
+    let parsedLimit = limit ? parseInt(limit) : 100;
+    if (isNaN(parsedLimit) || parsedLimit <= 0) {
+      parsedLimit = 100;
+    } else if (parsedLimit > MAX_LIMIT) {
+      parsedLimit = MAX_LIMIT;
+    }
+
     const transactions = await getTransactionsByCompany(c.env.DB, companyId, {
       status: status || undefined,
-      limit: limit ? parseInt(limit) : 100,
+      limit: parsedLimit,
       offset: offset ? parseInt(offset) : 0,
       search: search || undefined,
       startDate: start_date || undefined,
@@ -221,11 +230,29 @@ transactions.put('/:id', async (c) => {
       return c.json({ error: '確認済みの取引は変更できません' }, 403);
     }
 
+    // Validate amount if provided
+    if (body.amount !== undefined) {
+      const amountNum = parseInt(body.amount);
+      if (isNaN(amountNum) || amountNum <= 0) {
+        return c.json({ error: '金額は1円以上の正の整数を入力してください' }, 400);
+      }
+      if (amountNum > 999999999) {
+        return c.json({ error: '金額が大きすぎます（上限: 999,999,999円）' }, 400);
+      }
+    }
+
+    // Validate transaction_date format if provided
+    if (body.transaction_date !== undefined && body.transaction_date !== null) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(body.transaction_date)) {
+        return c.json({ error: '日付の形式が正しくありません (YYYY-MM-DD)' }, 400);
+      }
+    }
+
     // Update allowed fields - only include if explicitly provided
     const updateData: Record<string, unknown> = {};
 
     if (body.transaction_date !== undefined) updateData.transaction_date = body.transaction_date;
-    if (body.amount !== undefined) updateData.amount = body.amount;
+    if (body.amount !== undefined) updateData.amount = parseInt(body.amount);
     if (body.vendor_name !== undefined) updateData.vendor_name = body.vendor_name;
     if (body.account_debit !== undefined) updateData.account_debit = body.account_debit;
     if (body.account_credit !== undefined) updateData.account_credit = body.account_credit;

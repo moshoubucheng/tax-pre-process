@@ -408,9 +408,7 @@ export default function ReviewStation() {
   // Get image URL
   function getImageUrl(transactionId: string): string {
     const token = localStorage.getItem('token');
-    const baseUrl = import.meta.env.PROD
-      ? 'https://tax-api.759nxrb6x4-bc3.workers.dev/api'
-      : '/api';
+    const baseUrl = import.meta.env.VITE_API_URL || '/api';
     return `${baseUrl}/upload/transaction/${transactionId}/image?token=${token}`;
   }
 

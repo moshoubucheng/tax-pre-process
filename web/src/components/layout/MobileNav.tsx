@@ -27,7 +27,7 @@ export default function MobileNav() {
         { path: '/upload', label: '登録', icon: UploadIcon },
         { path: '/search', label: '検索', icon: SearchIcon },
         { path: '/documents', label: '資料', icon: DocumentIcon },
-        { path: '/settings', label: '設定', icon: SettingsIcon },
+        { path: '/chat', label: 'AI相談', icon: ChatIcon },
       ];
 
   // Client view nav items

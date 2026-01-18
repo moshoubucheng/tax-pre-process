@@ -1,6 +1,5 @@
-const API_BASE = import.meta.env.PROD
-  ? 'https://tax-api.759nxrb6x4-bc3.workers.dev/api'
-  : '/api';
+// Use VITE_API_URL from environment variable, fallback to /api for development
+const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
 class ApiClient {
   private getHeaders(): HeadersInit {

@@ -204,10 +204,10 @@ dashboard.get('/financial-summary', async (c) => {
     if (start_date && end_date) {
       // Use provided date range
       startDate = start_date;
-      // end_date is inclusive, so add 1 day for SQL comparison
-      const endDateObj = new Date(end_date);
-      endDateObj.setDate(endDateObj.getDate() + 1);
-      endDate = endDateObj.toISOString().split('T')[0];
+      // end_date is inclusive, so add 1 day for SQL comparison (use string manipulation to avoid timezone issues)
+      const [y, m, d] = end_date.split('-').map(Number);
+      const nextDay = new Date(y, m - 1, d + 1); // Note: month is 0-indexed in Date constructor
+      endDate = `${nextDay.getFullYear()}-${String(nextDay.getMonth() + 1).padStart(2, '0')}-${String(nextDay.getDate()).padStart(2, '0')}`;
     } else {
       // Fallback to year/month for backward compatibility
       const year = yearParam ? parseInt(yearParam) : now.getFullYear();

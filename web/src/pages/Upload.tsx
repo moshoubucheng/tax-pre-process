@@ -76,9 +76,7 @@ export default function Upload() {
       uploadFormData.append('type', transactionType);
 
       const token = localStorage.getItem('token');
-      const baseUrl = import.meta.env.PROD
-        ? 'https://tax-api.759nxrb6x4-bc3.workers.dev/api'
-        : '/api';
+      const baseUrl = import.meta.env.VITE_API_URL || '/api';
 
       const response = await fetch(`${baseUrl}/upload`, {
         method: 'POST',
@@ -183,9 +181,7 @@ export default function Upload() {
       submitFormData.append('invoice_number', formData.invoice_number);
 
       const token = localStorage.getItem('token');
-      const baseUrl = import.meta.env.PROD
-        ? 'https://tax-api.759nxrb6x4-bc3.workers.dev/api'
-        : '/api';
+      const baseUrl = import.meta.env.VITE_API_URL || '/api';
 
       const res = await fetch(`${baseUrl}/upload/manual`, {
         method: 'POST',

@@ -170,9 +170,14 @@ function escapeCSVField(field: string): string {
 
 /**
  * Generate Yayoi CSV from transactions
+ * Returns UTF-8 string with BOM for Japanese software compatibility
  */
 export function generateYayoiCSV(transactions: Transaction[]): string {
   const lines: string[] = [];
+
+  // Add UTF-8 BOM for Japanese software compatibility (弥生会計等)
+  // BOM will be prepended as \uFEFF
+  const BOM = '\uFEFF';
 
   // Add header row
   lines.push(CSV_HEADERS.map(escapeCSVField).join(','));
@@ -187,7 +192,8 @@ export function generateYayoiCSV(transactions: Transaction[]): string {
     lines.push(values.join(','));
   });
 
-  return lines.join('\r\n');
+  // Return with BOM prefix for proper encoding detection
+  return BOM + lines.join('\r\n');
 }
 
 /**

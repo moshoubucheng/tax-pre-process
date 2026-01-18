@@ -311,7 +311,7 @@ admin.get('/export/:companyId', async (c) => {
 
     return new Response(csv, {
       headers: {
-        'Content-Type': 'text/csv; charset=Shift_JIS',
+        'Content-Type': 'text/csv; charset=UTF-8',
         'Content-Disposition': `attachment; filename="${encodeURIComponent(filename)}"`,
       },
     });

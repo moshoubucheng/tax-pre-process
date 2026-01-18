@@ -32,7 +32,7 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           workingDirectory: ./api
           wranglerVersion: '3.114.17'
-          command: deploy
+          command: deploy --var ENVIRONMENT:production
 
   deploy-web:
     runs-on: ubuntu-latest
