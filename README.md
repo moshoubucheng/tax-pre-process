@@ -1,6 +1,6 @@
 # Tax Pre-Process
 
-税理士事務所向け領収書前処理システム
+AI自動記帳・電子証憑クラウド
 
 ## Tech Stack
 

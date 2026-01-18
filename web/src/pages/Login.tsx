@@ -30,7 +30,7 @@ export default function Login() {
       <div className="max-w-md w-full">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-primary-600">Tax Pre-Process</h1>
-          <p className="text-gray-600 mt-2">領収書前処理システム</p>
+          <p className="text-gray-600 mt-2">AI自動記帳・電子証憑クラウド</p>
         </div>
 
         <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-sm p-6 space-y-4">
