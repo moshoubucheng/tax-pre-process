@@ -23,7 +23,7 @@ export default function Header() {
       ]
     : [
         { path: '/', label: 'ホーム' },
-        { path: '/upload', label: '領収書' },
+        { path: '/upload', label: '取引登録' },
         { path: '/search', label: '証憑検索' },
         { path: '/documents', label: '基礎資料' },
         { path: '/chat', label: 'AI相談' },
