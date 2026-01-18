@@ -227,6 +227,10 @@ transactions.put('/:id', async (c) => {
         updateData.admin_note = body.admin_note;
       }
     }
+    // Client can confirm on_hold items (agree with admin's edits)
+    else if (transaction.status === 'on_hold' && body.status === 'confirmed') {
+      updateData.status = 'confirmed';
+    }
     // Client can reply to on_hold items (changes status to pending)
     else if (transaction.status === 'on_hold' && body.reply === true) {
       updateData.status = 'pending';

@@ -87,6 +87,7 @@ export default function ClientDashboard() {
   const [loading, setLoading] = useState(true);
   const [businessYearAlert, setBusinessYearAlert] = useState<BusinessYearAlert | null>(null);
   const [replying, setReplying] = useState(false);
+  const [confirming, setConfirming] = useState(false);
 
   // Transaction detail modal
   const [selectedTxn, setSelectedTxn] = useState<TransactionDetail | null>(null);
@@ -300,6 +301,44 @@ export default function ClientDashboard() {
       alert(err instanceof Error ? err.message : '送信に失敗しました');
     } finally {
       setReplying(false);
+    }
+  }
+
+  // Confirm on_hold transaction (client agrees with admin's edits)
+  async function handleConfirmApproval() {
+    if (!selectedTxn || selectedTxn.status !== 'on_hold') return;
+
+    setConfirming(true);
+    try {
+      await api.put(`/transactions/${selectedTxn.id}`, {
+        status: 'confirmed',
+      });
+
+      // Remove from on_hold list and add to confirmed list
+      setOnHoldList(onHoldList.filter(t => t.id !== selectedTxn.id));
+      setConfirmedList([...confirmedList, {
+        id: selectedTxn.id,
+        transaction_date: selectedTxn.transaction_date,
+        amount: selectedTxn.amount,
+        vendor_name: selectedTxn.vendor_name,
+        ai_confidence: selectedTxn.ai_confidence,
+      }]);
+
+      // Update stats
+      if (stats) {
+        setStats({
+          ...stats,
+          on_hold_count: stats.on_hold_count - 1,
+          confirmed_count: stats.confirmed_count + 1,
+        });
+      }
+
+      closeDetail();
+      alert('確認しました。処理を完了します。');
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '確認に失敗しました');
+    } finally {
+      setConfirming(false);
     }
   }
 
@@ -947,22 +986,28 @@ export default function ClientDashboard() {
                 </div>
 
                 <div className="p-4 border-t border-gray-200">
-                  {/* On Hold - Reply Button */}
+                  {/* On Hold - Two Choice System */}
                   {selectedTxn.status === 'on_hold' ? (
-                    <div className="flex gap-2">
+                    <div className="space-y-2">
+                      {/* Choice A: Confirm (Agree) */}
                       <button
-                        onClick={closeDetail}
-                        className="flex-1 py-2 border border-gray-300 rounded-md text-sm"
+                        onClick={handleConfirmApproval}
+                        disabled={confirming || replying}
+                        className="w-full py-2.5 bg-green-600 text-white rounded-md text-sm disabled:opacity-50 hover:bg-green-700 font-medium"
                       >
-                        キャンセル
+                        {confirming ? '処理中...' : '確認完了 (内容に同意)'}
                       </button>
+                      {/* Choice B: Reply/Object */}
                       <button
                         onClick={handleReply}
-                        disabled={replying || !editForm.description.trim()}
-                        className="flex-1 py-2 bg-yellow-600 text-white rounded-md text-sm disabled:opacity-50 hover:bg-yellow-700"
+                        disabled={replying || confirming || !editForm.description.trim()}
+                        className="w-full py-2.5 border-2 border-yellow-500 text-yellow-700 rounded-md text-sm disabled:opacity-50 hover:bg-yellow-50 font-medium"
                       >
-                        {replying ? '送信中...' : '回答を送信'}
+                        {replying ? '送信中...' : '返信して修正'}
                       </button>
+                      <p className="text-xs text-gray-500 text-center mt-1">
+                        修正する場合は上の使途・備考欄に記入してください
+                      </p>
                     </div>
                   ) : isEditing ? (
                     <div className="flex gap-2">
