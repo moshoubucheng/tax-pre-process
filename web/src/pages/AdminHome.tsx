@@ -79,8 +79,10 @@ export default function AdminHome() {
         {/* Pending Items - Urgent Action */}
         <button
           onClick={() => navigate('/admin/transactions?status=pending')}
-          className={`bg-white rounded-lg shadow-sm p-4 text-left hover:shadow-md transition-shadow ${
-            stats.pending_count > 0 ? 'ring-2 ring-orange-500' : ''
+          className={`rounded-lg shadow-sm p-4 text-left hover:shadow-md transition-all border-l-4 ${
+            stats.pending_count > 0
+              ? 'bg-orange-50 border-orange-500'
+              : 'bg-green-50 border-green-500'
           }`}
         >
           <div className="flex items-center gap-2 mb-2">
@@ -93,52 +95,59 @@ export default function AdminHome() {
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
               </svg>
             )}
-            <p className="text-sm text-gray-500">未処理残数</p>
+            <p className="text-sm text-gray-600 font-medium">未処理残数</p>
           </div>
           <p className={`text-3xl font-bold ${stats.pending_count > 0 ? 'text-orange-600' : 'text-green-600'}`}>
             {stats.pending_count}
           </p>
-          <p className="text-xs text-gray-400 mt-1">
-            {stats.pending_count > 0 ? 'クリックして確認' : 'すべて完了'}
+          <p className="text-xs text-gray-500 mt-1">
+            {stats.pending_count > 0 ? 'クリックして確認 →' : 'すべて完了'}
           </p>
         </button>
 
         {/* On Hold / Client Queries */}
         <button
           onClick={() => navigate('/admin/transactions?status=on_hold')}
-          className="bg-white rounded-lg shadow-sm p-4 text-left hover:shadow-md transition-shadow relative group"
-          title="クライアントの回答待ち"
+          className={`rounded-lg shadow-sm p-4 text-left hover:shadow-md transition-all border-l-4 ${
+            stats.on_hold_count > 0
+              ? 'bg-yellow-50 border-yellow-500'
+              : 'bg-gray-50 border-gray-300'
+          }`}
         >
           <div className="flex items-center gap-2 mb-2">
-            <svg className="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
+            <svg className={`w-5 h-5 ${stats.on_hold_count > 0 ? 'text-yellow-500' : 'text-gray-400'}`} fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
             </svg>
-            <p className="text-sm text-gray-500">確認待ち</p>
+            <p className="text-sm text-gray-600 font-medium">確認待ち</p>
           </div>
           <p className={`text-3xl font-bold ${stats.on_hold_count > 0 ? 'text-yellow-600' : 'text-gray-400'}`}>
             {stats.on_hold_count}
           </p>
-          <p className="text-xs text-gray-400 mt-1">使途不明・回答待ち</p>
+          <p className="text-xs text-gray-500 mt-1">
+            {stats.on_hold_count > 0 ? 'クリックして確認 →' : '回答待ちなし'}
+          </p>
         </button>
 
         {/* Settlement Alerts */}
         <button
           onClick={() => navigate('/clients?filter=settlement')}
-          className={`bg-white rounded-lg shadow-sm p-4 text-left hover:shadow-md transition-shadow ${
-            stats.settlement_alerts > 0 ? 'ring-2 ring-red-500' : ''
+          className={`rounded-lg shadow-sm p-4 text-left hover:shadow-md transition-all border-l-4 ${
+            stats.settlement_alerts > 0
+              ? 'bg-red-50 border-red-500'
+              : 'bg-gray-50 border-gray-300'
           }`}
         >
           <div className="flex items-center gap-2 mb-2">
             <svg className={`w-5 h-5 ${stats.settlement_alerts > 0 ? 'text-red-500' : 'text-gray-400'}`} fill="currentColor" viewBox="0 0 20 20">
               <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
             </svg>
-            <p className="text-sm text-gray-500">決算アラート</p>
+            <p className="text-sm text-gray-600 font-medium">決算アラート</p>
           </div>
           <p className={`text-3xl font-bold ${stats.settlement_alerts > 0 ? 'text-red-600' : 'text-gray-400'}`}>
             {stats.settlement_alerts}
           </p>
-          <p className="text-xs text-gray-400 mt-1">
-            {stats.settlement_alerts > 0 ? '要対応' : '問題なし'}
+          <p className="text-xs text-gray-500 mt-1">
+            {stats.settlement_alerts > 0 ? 'クリックして確認 →' : '問題なし'}
           </p>
         </button>
       </div>
