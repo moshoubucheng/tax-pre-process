@@ -170,7 +170,12 @@ export default function Clients() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-gray-900">顧問先一覧</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-xl font-bold text-gray-900">顧問先一覧</h1>
+          <span className="text-sm bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
+            {companies.length}社
+          </span>
+        </div>
         <button
           onClick={() => setShowForm(true)}
           className="bg-primary-600 text-white px-4 py-2 rounded-md text-sm"
