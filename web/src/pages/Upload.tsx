@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import { compressImageIfNeeded } from '../lib/imageUtils';
+import { isNativePlatform, takePhoto, pickImage } from '../lib/native';
 import {
   TransactionType,
   getAccountDebitOptions,
@@ -64,6 +65,37 @@ export default function Upload() {
       const reader = new FileReader();
       reader.onload = (ev) => setPreview(ev.target?.result as string);
       reader.readAsDataURL(selected);
+    }
+  }
+
+  // 处理原生相机拍照
+  async function handleNativeCapture() {
+    const photo = await takePhoto();
+    if (photo) {
+      setFile(photo);
+      const reader = new FileReader();
+      reader.onload = (ev) => setPreview(ev.target?.result as string);
+      reader.readAsDataURL(photo);
+    }
+  }
+
+  // 处理原生相册选择
+  async function handleNativePick() {
+    const photo = await pickImage();
+    if (photo) {
+      setFile(photo);
+      const reader = new FileReader();
+      reader.onload = (ev) => setPreview(ev.target?.result as string);
+      reader.readAsDataURL(photo);
+    }
+  }
+
+  // 统一的文件选择处理（根据平台自动选择）
+  function handleSelectFile() {
+    if (isNativePlatform()) {
+      handleNativeCapture();
+    } else {
+      fileInputRef.current?.click();
     }
   }
 
@@ -314,7 +346,7 @@ export default function Upload() {
               )}
               <div className="flex gap-2">
                 <button
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={handleSelectFile}
                   className="flex-1 py-2 border border-gray-300 rounded-md text-gray-700"
                 >
                   やり直す
@@ -331,39 +363,49 @@ export default function Upload() {
               </div>
             </div>
           ) : (
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className={`w-full py-12 border-2 border-dashed rounded-lg hover:border-primary-500 transition-colors ${
-                transactionType === 'income' ? 'border-green-300' : 'border-gray-300'
-              }`}
-            >
-              <div className="text-center">
-                <svg
-                  className={`mx-auto h-12 w-12 ${transactionType === 'income' ? 'text-green-400' : 'text-gray-400'}`}
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
+            <div className="space-y-3">
+              <button
+                onClick={handleSelectFile}
+                className={`w-full py-12 border-2 border-dashed rounded-lg hover:border-primary-500 transition-colors ${
+                  transactionType === 'income' ? 'border-green-300' : 'border-gray-300'
+                }`}
+              >
+                <div className="text-center">
+                  <svg
+                    className={`mx-auto h-12 w-12 ${transactionType === 'income' ? 'text-green-400' : 'text-gray-400'}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
+                    />
+                  </svg>
+                  <p className="mt-2 text-sm text-gray-600">
+                    {transactionType === 'income'
+                      ? 'タップして請求書を撮影'
+                      : 'タップして領収書を撮影'}
+                  </p>
+                </div>
+              </button>
+              {isNativePlatform() && (
+                <button
+                  onClick={handleNativePick}
+                  className="w-full py-3 border border-gray-300 rounded-lg text-gray-600 text-sm"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
-                  />
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
-                  />
-                </svg>
-                <p className="mt-2 text-sm text-gray-600">
-                  {transactionType === 'income'
-                    ? 'タップして請求書を撮影'
-                    : 'タップして領収書を撮影'}
-                </p>
-              </div>
-            </button>
+                  アルバムから選択
+                </button>
+              )}
+            </div>
           )}
         </div>
       )}
@@ -394,42 +436,52 @@ export default function Upload() {
                   className="w-full rounded-lg object-contain max-h-48 bg-gray-100"
                 />
                 <button
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={handleSelectFile}
                   className="w-full py-2 border border-gray-300 rounded-md text-gray-700 text-sm"
                 >
                   画像を変更
                 </button>
               </div>
             ) : (
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="w-full py-8 border-2 border-dashed border-gray-300 rounded-lg hover:border-primary-500 transition-colors"
-              >
-                <div className="text-center">
-                  <svg
-                    className="mx-auto h-8 w-8 text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
+              <div className="space-y-2">
+                <button
+                  onClick={handleSelectFile}
+                  className="w-full py-8 border-2 border-dashed border-gray-300 rounded-lg hover:border-primary-500 transition-colors"
+                >
+                  <div className="text-center">
+                    <svg
+                      className="mx-auto h-8 w-8 text-gray-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
+                      />
+                    </svg>
+                    <p className="mt-1 text-sm text-gray-600">
+                      タップして写真を撮影
+                    </p>
+                  </div>
+                </button>
+                {isNativePlatform() && (
+                  <button
+                    onClick={handleNativePick}
+                    className="w-full py-2 border border-gray-300 rounded-lg text-gray-600 text-sm"
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
-                    />
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
-                    />
-                  </svg>
-                  <p className="mt-1 text-sm text-gray-600">
-                    タップして写真を撮影
-                  </p>
-                </div>
-              </button>
+                    アルバムから選択
+                  </button>
+                )}
+              </div>
             )}
           </div>
 

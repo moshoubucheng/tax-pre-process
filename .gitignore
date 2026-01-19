@@ -38,3 +38,17 @@ coverage/
 # Misc
 *.tsbuildinfo
 .turbo
+
+# Capacitor - iOS
+web/ios/App/Pods/
+web/ios/App/App.xcworkspace/xcuserdata/
+web/ios/App/App.xcodeproj/xcuserdata/
+web/ios/DerivedData/
+
+# Capacitor - Android
+web/android/.gradle/
+web/android/app/build/
+web/android/build/
+web/android/local.properties
+web/android/.idea/
+web/android/*.iml
