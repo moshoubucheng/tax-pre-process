@@ -35,6 +35,16 @@ export const translations = {
       badge1: '電子帳簿保存法対応',
       badge2: 'AI精度98%以上',
       badge3: '30日間無料',
+      // Mock dashboard
+      mockDate: '日付',
+      mockAmount: '金額',
+      mockStore: '店舗',
+      mockStoreName: 'セブンイレブン',
+      mockStatus: 'AI 読取完了',
+      mockProcessing: '処理中',
+      mockAiAccuracy: 'AI 精度',
+      mockProcessTime: '処理時間',
+      mockSeconds: '2秒',
     },
 
     // Pain Points Section
@@ -173,9 +183,11 @@ export const translations = {
       aiTitle: 'AI自動仕訳機能',
       aiDesc: '最新のAI技術で領収書を自動認識。手入力の手間を大幅に削減します。',
       aiFeatures: ['日付・金額・取引先の自動認識', '勘定科目の自動推定', '98%以上の認識精度', '手書き領収書にも対応'],
+      aiDemo: 'AI OCR デモ',
       securityTitle: '安心のセキュリティ',
       securityDesc: '大切なデータを安全に保護します。',
       securityFeatures: ['SSL暗号化通信', 'Cloudflare基盤', '定期バックアップ', 'アクセス権限管理'],
+      securityDemo: 'セキュリティ デモ',
     },
 
     // Pricing Page
@@ -218,6 +230,7 @@ export const translations = {
       companyName: '会社名',
       addressLabel: '所在地',
       phoneLabel: '電話番号',
+      phoneNumber: '050-6868-2230',
       emailLabel: 'メール',
       trialTitle: '30日間無料トライアル',
       trialDesc: 'クレジットカード登録不要で、全機能をお試しいただけます。',
@@ -294,6 +307,16 @@ export const translations = {
       badge1: '符合电子账簿保存法',
       badge2: 'AI精度98%以上',
       badge3: '30天免费',
+      // Mock dashboard
+      mockDate: '日期',
+      mockAmount: '金额',
+      mockStore: '商店',
+      mockStoreName: '7-Eleven',
+      mockStatus: 'AI读取完成',
+      mockProcessing: '处理中',
+      mockAiAccuracy: 'AI精度',
+      mockProcessTime: '处理时间',
+      mockSeconds: '2秒',
     },
 
     // Pain Points Section
@@ -432,9 +455,11 @@ export const translations = {
       aiTitle: 'AI自动记账功能',
       aiDesc: '采用最新AI技术自动识别收据。大幅减少手动输入的麻烦。',
       aiFeatures: ['自动识别日期・金额・交易对象', '自动推定会计科目', '98%以上的识别精度', '支持手写收据'],
+      aiDemo: 'AI OCR 演示',
       securityTitle: '安心的安全保障',
       securityDesc: '安全保护您的重要数据。',
       securityFeatures: ['SSL加密通信', 'Cloudflare基础设施', '定期备份', '访问权限管理'],
+      securityDemo: '安全性演示',
     },
 
     // Pricing Page
@@ -477,6 +502,7 @@ export const translations = {
       companyName: '公司名称',
       addressLabel: '地址',
       phoneLabel: '电话',
+      phoneNumber: '050-6868-2230',
       emailLabel: '邮箱',
       trialTitle: '30天免费试用',
       trialDesc: '无需注册信用卡即可试用全部功能。',
@@ -553,6 +579,16 @@ export const translations = {
       badge1: 'Legally Compliant',
       badge2: '98%+ AI Accuracy',
       badge3: '30 Days Free',
+      // Mock dashboard
+      mockDate: 'Date',
+      mockAmount: 'Amount',
+      mockStore: 'Store',
+      mockStoreName: 'Seven Eleven',
+      mockStatus: 'AI Reading Complete',
+      mockProcessing: 'Processing',
+      mockAiAccuracy: 'AI Accuracy',
+      mockProcessTime: 'Process Time',
+      mockSeconds: '2 sec',
     },
 
     // Pain Points Section
@@ -674,7 +710,7 @@ export const translations = {
     footer: {
       description: 'Revolutionizing bookkeeping with AI and cloud power. From compliant receipt management to Yayoi integration.',
       company: 'KYOKA.Co.,Ltd.',
-      address: '〒556-0015 Shimotera 3-18-7, Naniwa-ku, Osaka',
+      address: '〒556-0015 Shimodera 3-18-7, Naniwa-ku, Osaka',
       phone: 'TEL: 050-6868-2230',
       email: 'Email: info@japantpp.com',
       links: 'Links',
@@ -691,9 +727,11 @@ export const translations = {
       aiTitle: 'AI Auto-Bookkeeping',
       aiDesc: 'Advanced AI technology automatically recognizes receipts. Dramatically reduce manual entry.',
       aiFeatures: ['Auto-recognize dates, amounts, vendors', 'Auto-suggest account categories', '98%+ recognition accuracy', 'Handwritten receipt support'],
+      aiDemo: 'AI OCR Demo',
       securityTitle: 'Secure & Reliable',
       securityDesc: 'Keep your important data safe.',
       securityFeatures: ['SSL encrypted communication', 'Cloudflare infrastructure', 'Regular backups', 'Access control management'],
+      securityDemo: 'Security Demo',
     },
 
     // Pricing Page
@@ -736,6 +774,7 @@ export const translations = {
       companyName: 'Company Name',
       addressLabel: 'Address',
       phoneLabel: 'Phone',
+      phoneNumber: '050-6868-2230',
       emailLabel: 'Email',
       trialTitle: '30-Day Free Trial',
       trialDesc: 'Try all features without credit card registration.',

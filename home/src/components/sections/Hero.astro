@@ -102,19 +102,19 @@ const t = translations[lang];
               <div class="bg-white rounded-lg p-3 shadow-sm">
                 <div class="space-y-2">
                   <div class="flex justify-between text-xs">
-                    <span class="text-gray-500">日付</span>
+                    <span class="text-gray-500">{t.hero.mockDate}</span>
                     <span class="text-gray-900 font-medium">2024/01/15</span>
                   </div>
                   <div class="flex justify-between text-xs">
-                    <span class="text-gray-500">金額</span>
+                    <span class="text-gray-500">{t.hero.mockAmount}</span>
                     <span class="text-gray-900 font-medium">¥12,500</span>
                   </div>
                   <div class="flex justify-between text-xs">
-                    <span class="text-gray-500">店舗</span>
-                    <span class="text-gray-900 font-medium">セブンイレブン</span>
+                    <span class="text-gray-500">{t.hero.mockStore}</span>
+                    <span class="text-gray-900 font-medium">{t.hero.mockStoreName}</span>
                   </div>
                   <div class="mt-2 px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full text-center">
-                    AI 読取完了
+                    {t.hero.mockStatus}
                   </div>
                 </div>
               </div>
@@ -122,7 +122,7 @@ const t = translations[lang];
             <!-- Progress Bar -->
             <div class="mt-4">
               <div class="flex justify-between text-xs text-gray-500 mb-1">
-                <span>処理中</span>
+                <span>{t.hero.mockProcessing}</span>
                 <span>85%</span>
               </div>
               <div class="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
@@ -141,7 +141,7 @@ const t = translations[lang];
               </svg>
             </div>
             <div>
-              <div class="text-xs font-medium text-gray-900">AI 精度</div>
+              <div class="text-xs font-medium text-gray-900">{t.hero.mockAiAccuracy}</div>
               <div class="text-sm font-bold text-green-600">98.5%</div>
             </div>
           </div>
@@ -155,8 +155,8 @@ const t = translations[lang];
               </svg>
             </div>
             <div>
-              <div class="text-xs font-medium text-gray-900">処理時間</div>
-              <div class="text-sm font-bold text-primary-600">2秒</div>
+              <div class="text-xs font-medium text-gray-900">{t.hero.mockProcessTime}</div>
+              <div class="text-sm font-bold text-primary-600">{t.hero.mockSeconds}</div>
             </div>
           </div>
         </div>
