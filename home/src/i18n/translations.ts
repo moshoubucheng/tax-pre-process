@@ -158,7 +158,7 @@ export const translations = {
       company: '興華株式会社',
       address: '〒556-0015 大阪市浪速区下寺3-18-7',
       phone: 'TEL: 050-6868-2230',
-      email: 'Email: wufuxing@me.com',
+      email: 'Email: info@japantpp.com',
       links: 'リンク',
       legal: '法的情報',
       privacy: 'プライバシーポリシー',
@@ -241,7 +241,7 @@ export const translations = {
       section5Title: '5. 個人情報の開示・訂正・削除',
       section5Content: 'ご本人からの個人情報の開示、訂正、削除のご請求には、本人確認の上、適切に対応いたします。',
       section6Title: '6. お問い合わせ',
-      section6Content: 'プライバシーポリシーに関するお問い合わせは、wufuxing@me.comまでご連絡ください。',
+      section6Content: 'プライバシーポリシーに関するお問い合わせは、info@japantpp.comまでご連絡ください。',
     },
 
     // Terms of Service
@@ -262,7 +262,7 @@ export const translations = {
       section6Title: '6. 準拠法・管轄裁判所',
       section6Content: '本規約は日本法に準拠し、本サービスに関する紛争は大阪地方裁判所を第一審の専属的合意管轄裁判所とします。',
       section7Title: '7. お問い合わせ',
-      section7Content: '本規約に関するお問い合わせは、wufuxing@me.comまでご連絡ください。',
+      section7Content: '本規約に関するお問い合わせは、info@japantpp.comまでご連絡ください。',
     },
   },
 
@@ -417,7 +417,7 @@ export const translations = {
       company: '兴华株式会社',
       address: '〒556-0015 大阪市浪速区下寺3-18-7',
       phone: 'TEL: 050-6868-2230',
-      email: 'Email: wufuxing@me.com',
+      email: 'Email: info@japantpp.com',
       links: '链接',
       legal: '法律信息',
       privacy: '隐私政策',
@@ -500,7 +500,7 @@ export const translations = {
       section5Title: '5. 个人信息的公开・更正・删除',
       section5Content: '对于本人提出的个人信息公开、更正、删除请求，我们将在确认身份后妥善处理。',
       section6Title: '6. 联系方式',
-      section6Content: '如有关于隐私政策的问题，请联系 wufuxing@me.com。',
+      section6Content: '如有关于隐私政策的问题，请联系 info@japantpp.com。',
     },
 
     // Terms of Service
@@ -521,7 +521,7 @@ export const translations = {
       section6Title: '6. 准据法・管辖法院',
       section6Content: '本条款适用日本法律，与本服务相关的纠纷以大阪地方法院为一审专属合意管辖法院。',
       section7Title: '7. 联系方式',
-      section7Content: '如有关于本条款的问题，请联系 wufuxing@me.com。',
+      section7Content: '如有关于本条款的问题，请联系 info@japantpp.com。',
     },
   },
 
@@ -676,7 +676,7 @@ export const translations = {
       company: 'Koka Co., Ltd.',
       address: '〒556-0015 Shimotera 3-18-7, Naniwa-ku, Osaka',
       phone: 'TEL: 050-6868-2230',
-      email: 'Email: wufuxing@me.com',
+      email: 'Email: info@japantpp.com',
       links: 'Links',
       legal: 'Legal',
       privacy: 'Privacy Policy',
@@ -759,7 +759,7 @@ export const translations = {
       section5Title: '5. Disclosure, Correction, and Deletion',
       section5Content: 'We will appropriately respond to requests for disclosure, correction, or deletion of personal information after verifying identity.',
       section6Title: '6. Contact',
-      section6Content: 'For inquiries about this privacy policy, please contact wufuxing@me.com.',
+      section6Content: 'For inquiries about this privacy policy, please contact info@japantpp.com.',
     },
 
     // Terms of Service
@@ -780,7 +780,7 @@ export const translations = {
       section6Title: '6. Governing Law and Jurisdiction',
       section6Content: 'These Terms shall be governed by Japanese law, and the Osaka District Court shall have exclusive jurisdiction over any disputes related to the Service.',
       section7Title: '7. Contact',
-      section7Content: 'For inquiries about these Terms, please contact wufuxing@me.com.',
+      section7Content: 'For inquiries about these Terms, please contact info@japantpp.com.',
     },
   },
 } as const;
