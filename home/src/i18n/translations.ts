@@ -414,7 +414,7 @@ export const translations = {
     // Footer
     footer: {
       description: '借助AI和云的力量，革新记账业务。从符合电子账簿保存法的凭证管理到弥生会计对接。',
-      company: '兴华株式会社',
+      company: '興華株式会社',
       address: '〒556-0015 大阪市浪速区下寺3-18-7',
       phone: 'TEL: 050-6868-2230',
       email: 'Email: info@japantpp.com',
@@ -422,7 +422,7 @@ export const translations = {
       legal: '法律信息',
       privacy: '隐私政策',
       terms: '使用条款',
-      copyright: '© 2025 兴华株式会社. 保留所有权利。',
+      copyright: '© 2025 興華株式会社. 保留所有权利。',
     },
 
     // Features Page
@@ -508,7 +508,7 @@ export const translations = {
       title: '使用条款',
       lastUpdated: '最后更新: 2025年1月1日',
       section1Title: '1. 适用范围',
-      section1Content: '本使用条款规定兴华株式会社（以下简称"本公司"）提供的Tax Pre-Process服务（以下简称"本服务"）的使用条件。',
+      section1Content: '本使用条款规定興華株式会社（以下简称"本公司"）提供的Tax Pre-Process服务（以下简称"本服务"）的使用条件。',
       section2Title: '2. 服务的使用',
       section2Content: '用户在同意本条款的基础上使用本服务。',
       section3Title: '3. 禁止事项',
@@ -673,7 +673,7 @@ export const translations = {
     // Footer
     footer: {
       description: 'Revolutionizing bookkeeping with AI and cloud power. From compliant receipt management to Yayoi integration.',
-      company: 'Koka Co., Ltd.',
+      company: 'KYOKA.Co.,Ltd.',
       address: '〒556-0015 Shimotera 3-18-7, Naniwa-ku, Osaka',
       phone: 'TEL: 050-6868-2230',
       email: 'Email: info@japantpp.com',
@@ -681,7 +681,7 @@ export const translations = {
       legal: 'Legal',
       privacy: 'Privacy Policy',
       terms: 'Terms of Service',
-      copyright: '© 2025 Koka Co., Ltd. All rights reserved.',
+      copyright: '© 2025 KYOKA.Co.,Ltd. All rights reserved.',
     },
 
     // Features Page
@@ -767,7 +767,7 @@ export const translations = {
       title: 'Terms of Service',
       lastUpdated: 'Last Updated: January 1, 2025',
       section1Title: '1. Scope of Application',
-      section1Content: 'These Terms of Service define the conditions for use of the Tax Pre-Process service (the "Service") provided by Koka Co., Ltd. (the "Company").',
+      section1Content: 'These Terms of Service define the conditions for use of the Tax Pre-Process service (the "Service") provided by KYOKA.Co.,Ltd. (the "Company").',
       section2Title: '2. Use of Service',
       section2Content: 'Users shall use the Service upon agreeing to these Terms.',
       section3Title: '3. Prohibited Actions',
