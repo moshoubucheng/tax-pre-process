@@ -72,17 +72,15 @@ export default function Upload() {
 
     setUploading(true);
     try {
-      // Compress image if larger than 5MB
+      // Always compress images to ensure they're under 5MB for Claude API
+      // Android may report incorrect file size due to capture="environment"
       let processedFile = file;
       console.log('Original file:', file.name, 'size:', (file.size / 1024 / 1024).toFixed(2) + 'MB', 'type:', file.type);
 
-      if (file.size > 5 * 1024 * 1024) {
-        console.log('File exceeds 5MB, starting compression...');
-        setCompressing(true);
-        processedFile = await compressImageIfNeeded(file);
-        setCompressing(false);
-        console.log('After compression:', processedFile.name, 'size:', (processedFile.size / 1024 / 1024).toFixed(2) + 'MB');
-      }
+      setCompressing(true);
+      processedFile = await compressImageIfNeeded(file);
+      setCompressing(false);
+      console.log('After compression:', processedFile.name, 'size:', (processedFile.size / 1024 / 1024).toFixed(2) + 'MB');
 
       // Create FormData and include type
       const uploadFormData = new FormData();
@@ -183,13 +181,10 @@ export default function Upload() {
 
     setSaving(true);
     try {
-      // Compress image if larger than 5MB
-      let processedFile = file;
-      if (file.size > 5 * 1024 * 1024) {
-        setCompressing(true);
-        processedFile = await compressImageIfNeeded(file);
-        setCompressing(false);
-      }
+      // Always compress images
+      setCompressing(true);
+      const processedFile = await compressImageIfNeeded(file);
+      setCompressing(false);
 
       const submitFormData = new FormData();
       submitFormData.append('file', processedFile);

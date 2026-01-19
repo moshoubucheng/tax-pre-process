@@ -5,11 +5,6 @@ const MAX_SIZE = 5 * 1024 * 1024; // 5MB
  * Uses canvas to resize and reduce quality
  */
 export async function compressImageIfNeeded(file: File): Promise<File> {
-  // Only compress if file is larger than 5MB
-  if (file.size <= MAX_SIZE) {
-    return file;
-  }
-
   // Check if it's likely an image (by extension or type)
   const ext = file.name.toLowerCase().split('.').pop() || '';
   const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic', 'heif'];
@@ -20,6 +15,7 @@ export async function compressImageIfNeeded(file: File): Promise<File> {
     return file;
   }
 
+  // Always compress to ensure it's under 5MB (Android may report incorrect file size)
   console.log('Starting compression for:', file.name, 'size:', (file.size / 1024 / 1024).toFixed(2) + 'MB', 'type:', file.type);
 
   return new Promise((resolve) => {
