@@ -421,7 +421,7 @@ export default function ReviewStation() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col">
+    <div className="h-screen bg-gray-100 flex flex-col overflow-hidden">
       {/* Header */}
       <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -460,9 +460,9 @@ export default function ReviewStation() {
       </header>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden min-h-0">
         {/* Left Sidebar - Transaction List (Mobile: Bottom, Desktop: Left) */}
-        <div className="order-2 lg:order-1 lg:w-80 bg-white border-t lg:border-t-0 lg:border-r border-gray-200 overflow-auto flex-shrink-0 max-h-[40vh] lg:max-h-none">
+        <div className="order-2 lg:order-1 lg:w-80 bg-white border-t lg:border-t-0 lg:border-r border-gray-200 overflow-auto flex-shrink-0 h-[30vh] lg:h-auto">
           <div className="p-3 space-y-3">
             <ConfidenceGroup
               title="低置信度"
@@ -485,11 +485,11 @@ export default function ReviewStation() {
         </div>
 
         {/* Center - Split View */}
-        <div className="order-1 lg:order-2 flex-1 flex flex-col lg:flex-row overflow-hidden">
+        <div className="order-1 lg:order-2 flex-1 flex flex-col lg:flex-row overflow-hidden min-h-0">
           {selectedId && selectedTransaction ? (
             <>
               {/* Image Panel */}
-              <div className="flex-1 lg:flex-[1.2] p-3 lg:p-4 min-h-[300px] lg:min-h-0">
+              <div className="flex-1 lg:flex-[1.2] p-3 lg:p-4 min-h-0 h-[40vh] lg:h-auto overflow-hidden">
                 <ImagePanel
                   src={getImageUrl(selectedTransaction.id)}
                   alt={selectedTransaction.vendor_name || '領収書'}
@@ -497,7 +497,7 @@ export default function ReviewStation() {
               </div>
 
               {/* Form Panel */}
-              <div className="lg:w-96 bg-white border-t lg:border-t-0 lg:border-l border-gray-200 flex-shrink-0 overflow-auto max-h-[50vh] lg:max-h-full flex flex-col">
+              <div className="lg:w-96 bg-white border-t lg:border-t-0 lg:border-l border-gray-200 flex-shrink-0 overflow-auto h-[30vh] lg:h-auto flex flex-col">
                 {loadingDetail ? (
                   <div className="flex items-center justify-center h-full">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
