@@ -105,7 +105,8 @@ export default function ReviewStation() {
       return;
     }
     loadTransactionDetail(selectedId);
-    setSelectedAction('none'); // Reset selection when changing transaction
+    // Default to 'confirm' when selecting a new transaction
+    setSelectedAction('confirm');
   }, [selectedId]);
 
   async function loadTransactionDetail(id: string) {
@@ -352,11 +353,7 @@ export default function ReviewStation() {
     {
       ...REVIEW_SHORTCUTS.ESCAPE,
       handler: () => {
-        if (selectedAction !== 'none') {
-          setSelectedAction('none'); // Cancel selection
-        } else {
-          navigate('/'); // Go back if nothing selected
-        }
+        navigate('/'); // Go back
       },
     },
     {
@@ -386,13 +383,13 @@ export default function ReviewStation() {
     {
       ...REVIEW_SHORTCUTS.CONFIRM_NEXT,
       handler: () => {
-        if (selectedTransaction?.status === 'pending' && selectedAction !== 'none') {
-          if (selectedAction === 'confirm') {
-            formRef.current?.confirmWithSave();
-          } else if (selectedAction === 'hold') {
+        if (selectedTransaction?.status === 'pending') {
+          if (selectedAction === 'hold') {
             handleHold();
+          } else {
+            // Default action is confirm
+            formRef.current?.confirmWithSave();
           }
-          setSelectedAction('none');
         }
       },
     },

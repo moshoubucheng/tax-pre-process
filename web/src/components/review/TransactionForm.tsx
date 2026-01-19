@@ -318,7 +318,7 @@ const TransactionForm = forwardRef<TransactionFormRef, TransactionFormProps>(({
                   : 'bg-yellow-500 hover:bg-yellow-600'
               }`}
             >
-              確認依頼 (←)
+              確認依頼 {selectedAction === 'hold' ? '(Enter)' : '(←)'}
             </button>
           )}
           {status === 'pending' && (
@@ -331,7 +331,7 @@ const TransactionForm = forwardRef<TransactionFormRef, TransactionFormProps>(({
                   : 'bg-green-600 hover:bg-green-700'
               }`}
             >
-              確認 (→)
+              確認 {selectedAction === 'confirm' ? '(Enter)' : '(→)'}
             </button>
           )}
           {status === 'confirmed' && onRevert && (
@@ -354,7 +354,7 @@ const TransactionForm = forwardRef<TransactionFormRef, TransactionFormProps>(({
           )}
         </div>
         <div className="text-xs text-gray-500 text-center">
-          ↑↓ 前後の取引、←/→ 選択、Enter 実行、Esc 取消
+          ↑↓ 前後の取引、Enter 確認、← 確認依頼に切替
         </div>
       </div>
     </div>
