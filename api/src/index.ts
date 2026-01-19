@@ -27,6 +27,7 @@ app.use('*', cors({
     // Allow custom domains
     if (origin === 'https://japantpp.com') return origin;
     if (origin === 'https://www.japantpp.com') return origin;
+    if (origin === 'https://my.japantpp.com') return origin;
     return null;
   },
   credentials: true,
