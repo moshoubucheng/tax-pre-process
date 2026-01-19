@@ -45,7 +45,7 @@ const languages = [
       <div class="flex items-center gap-4">
         <!-- Language Switcher -->
         <div class="relative group">
-          <button class="flex items-center gap-1 text-gray-600 hover:text-primary-600 transition-colors text-sm">
+          <button id="lang-btn" class="flex items-center gap-1 text-gray-600 hover:text-primary-600 transition-colors text-sm">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
             </svg>
@@ -54,7 +54,7 @@ const languages = [
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
             </svg>
           </button>
-          <div class="absolute right-0 top-full mt-2 py-2 w-32 bg-white rounded-lg shadow-lg border border-gray-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
+          <div id="lang-menu" class="absolute right-0 top-full mt-2 py-2 w-32 bg-white rounded-lg shadow-lg border border-gray-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
             {languages.map((l) => (
               <a
                 href={l.path}
@@ -116,8 +116,25 @@ const languages = [
 <script>
   const menuBtn = document.getElementById('mobile-menu-btn');
   const mobileMenu = document.getElementById('mobile-menu');
+  const langBtn = document.getElementById('lang-btn');
+  const langMenu = document.getElementById('lang-menu');
 
+  // Mobile menu toggle
   menuBtn?.addEventListener('click', () => {
-    mobileMenu?.classList.toggle('hidden');
+    const isHidden = mobileMenu?.classList.toggle('hidden');
+    // Prevent body scroll when menu is open
+    document.body.style.overflow = isHidden ? '' : 'hidden';
+  });
+
+  // Language menu toggle (for mobile)
+  langBtn?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    langMenu?.classList.toggle('invisible');
+    langMenu?.classList.toggle('opacity-0');
+  });
+
+  // Close language menu when clicking outside
+  document.addEventListener('click', () => {
+    langMenu?.classList.add('invisible', 'opacity-0');
   });
 </script>

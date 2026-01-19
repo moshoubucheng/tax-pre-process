@@ -56,9 +56,9 @@ const plans = [
       </div>
     </div>
 
-    <div class="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 max-w-5xl mx-auto">
       {plans.map((plan) => (
-        <div class={`relative bg-white rounded-2xl p-8 shadow-sm border ${plan.popular ? 'border-primary-500 shadow-lg scale-105' : 'border-gray-100'}`}>
+        <div class={`relative bg-white rounded-2xl p-6 lg:p-8 shadow-sm border ${plan.popular ? 'border-primary-500 shadow-lg lg:scale-105' : 'border-gray-100'}`}>
           {plan.popular && (
             <div class="absolute -top-4 left-1/2 -translate-x-1/2">
               <span class="inline-flex items-center px-4 py-1 rounded-full bg-primary-600 text-white text-sm font-medium">

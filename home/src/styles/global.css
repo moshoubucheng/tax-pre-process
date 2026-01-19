@@ -53,6 +53,14 @@
   animation: pulse-slow 3s ease-in-out infinite;
 }
 
+/* Respect user's motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .animate-float,
+  .animate-pulse-slow {
+    animation: none;
+  }
+}
+
 /* Glass effect */
 .glass {
   background: rgba(255, 255, 255, 0.1);
