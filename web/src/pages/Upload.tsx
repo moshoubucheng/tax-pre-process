@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
+import { compressImageIfNeeded } from '../lib/imageUtils';
 import {
   TransactionType,
   getAccountDebitOptions,
@@ -70,9 +71,12 @@ export default function Upload() {
 
     setUploading(true);
     try {
+      // Compress image if larger than 5MB
+      const processedFile = await compressImageIfNeeded(file);
+
       // Create FormData and include type
       const uploadFormData = new FormData();
-      uploadFormData.append('file', file);
+      uploadFormData.append('file', processedFile);
       uploadFormData.append('type', transactionType);
 
       const token = localStorage.getItem('token');
@@ -169,8 +173,11 @@ export default function Upload() {
 
     setSaving(true);
     try {
+      // Compress image if larger than 5MB
+      const processedFile = await compressImageIfNeeded(file);
+
       const submitFormData = new FormData();
-      submitFormData.append('file', file);
+      submitFormData.append('file', processedFile);
       submitFormData.append('type', transactionType);
       submitFormData.append('transaction_date', formData.transaction_date);
       submitFormData.append('amount', formData.amount);
