@@ -66,6 +66,14 @@ const languages = [
           </div>
         </div>
 
+        <!-- Login Link -->
+        <a
+          href="https://my.japantpp.com"
+          class="hidden sm:inline-flex items-center text-gray-600 hover:text-primary-600 transition-colors font-medium"
+        >
+          {t.nav.login}
+        </a>
+
         <!-- CTA Button -->
         <a
           href={getPathWithLang('/contact', lang)}
@@ -92,6 +100,7 @@ const languages = [
       <a href={getPathWithLang('/pricing', lang)} class="block text-gray-600 hover:text-primary-600 py-2">{t.nav.pricing}</a>
       <a href={getPathWithLang('/faq', lang)} class="block text-gray-600 hover:text-primary-600 py-2">{t.nav.faq}</a>
       <a href={getPathWithLang('/contact', lang)} class="block text-gray-600 hover:text-primary-600 py-2">{t.nav.contact}</a>
+      <a href="https://my.japantpp.com" class="block text-gray-600 hover:text-primary-600 py-2">{t.nav.login}</a>
       <div class="pt-3 border-t border-gray-100">
         <a
           href={getPathWithLang('/contact', lang)}
