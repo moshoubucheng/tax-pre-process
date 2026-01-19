@@ -311,6 +311,12 @@ export default function Upload() {
                 alt="Preview"
                 className="w-full rounded-lg object-contain max-h-64"
               />
+              {file && (
+                <p className={`text-xs text-center ${file.size > 5 * 1024 * 1024 ? 'text-red-500 font-bold' : 'text-gray-500'}`}>
+                  ファイルサイズ: {(file.size / 1024 / 1024).toFixed(2)} MB
+                  {file.size > 5 * 1024 * 1024 && ' (5MB超過 - 自動圧縮します)'}
+                </p>
+              )}
               <div className="flex gap-2">
                 <button
                   onClick={() => fileInputRef.current?.click()}
@@ -582,11 +588,19 @@ export default function Upload() {
           </div>
 
           {preview && (
-            <img
-              src={preview}
-              alt="Receipt"
-              className="w-full rounded-lg object-contain max-h-48"
-            />
+            <div>
+              <img
+                src={preview}
+                alt="Receipt"
+                className="w-full rounded-lg object-contain max-h-48"
+              />
+              {file && (
+                <p className={`text-xs mt-1 text-center ${file.size > 5 * 1024 * 1024 ? 'text-red-500 font-bold' : 'text-gray-500'}`}>
+                  ファイルサイズ: {(file.size / 1024 / 1024).toFixed(2)} MB
+                  {file.size > 5 * 1024 * 1024 && ' (5MB超過 - 自動圧縮します)'}
+                </p>
+              )}
+            </div>
           )}
 
           <div className="space-y-3">
