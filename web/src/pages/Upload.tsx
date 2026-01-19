@@ -37,6 +37,7 @@ export default function Upload() {
   const [preview, setPreview] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [compressing, setCompressing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [aiResult, setAiResult] = useState<AIResult | null>(null);
   const [transactionId, setTransactionId] = useState<string | null>(null);
@@ -72,7 +73,12 @@ export default function Upload() {
     setUploading(true);
     try {
       // Compress image if larger than 5MB
-      const processedFile = await compressImageIfNeeded(file);
+      let processedFile = file;
+      if (file.size > 5 * 1024 * 1024) {
+        setCompressing(true);
+        processedFile = await compressImageIfNeeded(file);
+        setCompressing(false);
+      }
 
       // Create FormData and include type
       const uploadFormData = new FormData();
@@ -174,7 +180,12 @@ export default function Upload() {
     setSaving(true);
     try {
       // Compress image if larger than 5MB
-      const processedFile = await compressImageIfNeeded(file);
+      let processedFile = file;
+      if (file.size > 5 * 1024 * 1024) {
+        setCompressing(true);
+        processedFile = await compressImageIfNeeded(file);
+        setCompressing(false);
+      }
 
       const submitFormData = new FormData();
       submitFormData.append('file', processedFile);
@@ -310,7 +321,7 @@ export default function Upload() {
                     transactionType === 'income' ? 'bg-green-600' : 'bg-primary-600'
                   }`}
                 >
-                  {uploading ? 'AI解析中...' : 'アップロード'}
+                  {compressing ? '画像圧縮中...' : uploading ? 'AI解析中...' : 'アップロード'}
                 </button>
               </div>
             </div>
