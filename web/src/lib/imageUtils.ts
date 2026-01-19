@@ -10,11 +10,17 @@ export async function compressImageIfNeeded(file: File): Promise<File> {
     return file;
   }
 
-  // Only compress image files
-  if (!file.type.startsWith('image/')) {
-    console.warn('Not an image file, skipping compression:', file.type);
+  // Check if it's likely an image (by extension or type)
+  const ext = file.name.toLowerCase().split('.').pop() || '';
+  const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic', 'heif'];
+  const isImage = file.type.startsWith('image/') || imageExtensions.includes(ext);
+
+  if (!isImage) {
+    console.warn('Not an image file, skipping compression:', file.type, file.name);
     return file;
   }
+
+  console.log('Starting compression for:', file.name, 'size:', (file.size / 1024 / 1024).toFixed(2) + 'MB', 'type:', file.type);
 
   return new Promise((resolve) => {
     const img = new Image();

@@ -74,10 +74,14 @@ export default function Upload() {
     try {
       // Compress image if larger than 5MB
       let processedFile = file;
+      console.log('Original file:', file.name, 'size:', (file.size / 1024 / 1024).toFixed(2) + 'MB', 'type:', file.type);
+
       if (file.size > 5 * 1024 * 1024) {
+        console.log('File exceeds 5MB, starting compression...');
         setCompressing(true);
         processedFile = await compressImageIfNeeded(file);
         setCompressing(false);
+        console.log('After compression:', processedFile.name, 'size:', (processedFile.size / 1024 / 1024).toFixed(2) + 'MB');
       }
 
       // Create FormData and include type
