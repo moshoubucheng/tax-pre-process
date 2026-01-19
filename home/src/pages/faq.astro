@@ -1,0 +1,50 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import FAQ from '../components/sections/FAQ.astro';
+import CTA from '../components/sections/CTA.astro';
+import { translations, getPathWithLang } from '../i18n/translations';
+
+const lang = 'ja';
+const t = translations[lang];
+---
+
+<Layout lang={lang} title={`${t.nav.faq} | Tax Pre-Process`}>
+  <Header lang={lang} />
+  <main class="pt-20">
+    <!-- Hero Section -->
+    <section class="py-16 lg:py-24 bg-gradient-to-b from-primary-50 to-white">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <h1 class="text-4xl sm:text-5xl font-bold text-gray-900 mb-6">
+          {t.faqPage.title}
+        </h1>
+        <p class="text-lg text-gray-600 max-w-3xl mx-auto">
+          {t.faqPage.subtitle}
+        </p>
+      </div>
+    </section>
+
+    <FAQ lang={lang} />
+
+    <!-- Contact Section -->
+    <section class="py-16 lg:py-24">
+      <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <h2 class="text-2xl font-bold text-gray-900 mb-4">{t.faqPage.moreQuestions}</h2>
+        <p class="text-gray-600 mb-8">{t.faqPage.moreQuestionsDesc}</p>
+        <a
+          href={getPathWithLang('/contact', lang)}
+          class="inline-flex items-center justify-center px-6 py-3 rounded-lg bg-primary-600 text-white font-semibold hover:bg-primary-700 transition-colors"
+        >
+          {t.nav.contact}
+          <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+          </svg>
+        </a>
+      </div>
+    </section>
+
+    <CTA lang={lang} />
+  </main>
+  <Footer lang={lang} />
+</Layout>

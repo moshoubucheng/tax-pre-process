@@ -433,14 +433,14 @@ export default function ClientTransactions() {
                       <span>{txn.date}</span>
                       <span className="mx-2">·</span>
                       <span>{txn.account_category || '未分類'}</span>
-                      {txn.confidence < 80 && (
+                      {(txn.confidence ?? 100) < 80 && (
                         <span className="ml-2 text-orange-600">信頼度 {txn.confidence}%</span>
                       )}
                     </div>
                   </div>
                 </div>
                 <div className="text-right flex items-center gap-3">
-                  <span className="font-semibold">¥{txn.amount.toLocaleString()}</span>
+                  <span className="font-semibold">¥{(txn.amount || 0).toLocaleString()}</span>
                   {txn.status === 'pending' && (
                     <button
                       onClick={(e) => {

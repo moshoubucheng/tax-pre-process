@@ -1,0 +1,64 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import { translations } from '../i18n/translations';
+
+const lang = 'ja';
+const t = translations[lang];
+---
+
+<Layout lang={lang} title={`${t.footer.terms} | Tax Pre-Process`}>
+  <Header lang={lang} />
+  <main class="pt-20">
+    <section class="py-16 lg:py-24">
+      <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <h1 class="text-4xl font-bold text-gray-900 mb-8">{t.terms.title}</h1>
+        <p class="text-gray-600 mb-8">{t.terms.lastUpdated}</p>
+
+        <div class="prose prose-lg max-w-none">
+          <section class="mb-8">
+            <h2 class="text-2xl font-semibold text-gray-900 mb-4">{t.terms.section1Title}</h2>
+            <p class="text-gray-600 mb-4">{t.terms.section1Content}</p>
+          </section>
+
+          <section class="mb-8">
+            <h2 class="text-2xl font-semibold text-gray-900 mb-4">{t.terms.section2Title}</h2>
+            <p class="text-gray-600 mb-4">{t.terms.section2Content}</p>
+          </section>
+
+          <section class="mb-8">
+            <h2 class="text-2xl font-semibold text-gray-900 mb-4">{t.terms.section3Title}</h2>
+            <p class="text-gray-600 mb-4">{t.terms.section3Content}</p>
+            <ul class="list-disc list-inside text-gray-600 space-y-2">
+              {t.terms.section3Items.map((item: string) => (
+                <li>{item}</li>
+              ))}
+            </ul>
+          </section>
+
+          <section class="mb-8">
+            <h2 class="text-2xl font-semibold text-gray-900 mb-4">{t.terms.section4Title}</h2>
+            <p class="text-gray-600 mb-4">{t.terms.section4Content}</p>
+          </section>
+
+          <section class="mb-8">
+            <h2 class="text-2xl font-semibold text-gray-900 mb-4">{t.terms.section5Title}</h2>
+            <p class="text-gray-600 mb-4">{t.terms.section5Content}</p>
+          </section>
+
+          <section class="mb-8">
+            <h2 class="text-2xl font-semibold text-gray-900 mb-4">{t.terms.section6Title}</h2>
+            <p class="text-gray-600 mb-4">{t.terms.section6Content}</p>
+          </section>
+
+          <section class="mb-8">
+            <h2 class="text-2xl font-semibold text-gray-900 mb-4">{t.terms.section7Title}</h2>
+            <p class="text-gray-600">{t.terms.section7Content}</p>
+          </section>
+        </div>
+      </div>
+    </section>
+  </main>
+  <Footer lang={lang} />
+</Layout>

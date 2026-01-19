@@ -1,0 +1,62 @@
+---
+import '../styles/global.css';
+import { translations, type Lang, defaultLang } from '../i18n/translations';
+
+interface Props {
+  title?: string;
+  description?: string;
+  lang?: Lang;
+}
+
+const { lang = defaultLang } = Astro.props;
+const t = translations[lang];
+const title = Astro.props.title || t.siteTitle;
+const description = Astro.props.description || t.siteDescription;
+
+const langAlternates = {
+  ja: Astro.url.pathname.replace(/^\/(en|zh)/, '') || '/',
+  zh: '/zh' + (Astro.url.pathname.replace(/^\/(en|zh)/, '') || '/'),
+  en: '/en' + (Astro.url.pathname.replace(/^\/(en|zh)/, '') || '/'),
+};
+---
+
+<!DOCTYPE html>
+<html lang={lang}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content={description} />
+    <meta name="theme-color" content="#2563eb" />
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+    <!-- Language Alternates -->
+    <link rel="alternate" hreflang="ja" href={`https://japantpp.com${langAlternates.ja}`} />
+    <link rel="alternate" hreflang="zh" href={`https://japantpp.com${langAlternates.zh}`} />
+    <link rel="alternate" hreflang="en" href={`https://japantpp.com${langAlternates.en}`} />
+    <link rel="alternate" hreflang="x-default" href={`https://japantpp.com${langAlternates.ja}`} />
+
+    <!-- OGP -->
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="/og-image.png" />
+    <meta property="og:locale" content={lang === 'ja' ? 'ja_JP' : lang === 'zh' ? 'zh_CN' : 'en_US'} />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+
+    <title>{title}</title>
+  </head>
+  <body class="bg-white text-gray-900 antialiased">
+    <slot />
+  </body>
+</html>

@@ -1,0 +1,28 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+import Pricing from '../../components/sections/Pricing.astro';
+import FAQ from '../../components/sections/FAQ.astro';
+import CTA from '../../components/sections/CTA.astro';
+import { translations } from '../../i18n/translations';
+
+const lang = 'en';
+const t = translations[lang];
+---
+
+<Layout lang={lang} title={`${t.nav.pricing} | Tax Pre-Process`}>
+  <Header lang={lang} />
+  <main class="pt-20">
+    <section class="py-16 lg:py-24 bg-gradient-to-b from-primary-50 to-white">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <h1 class="text-4xl sm:text-5xl font-bold text-gray-900 mb-6">{t.pricingPage.title}</h1>
+        <p class="text-lg text-gray-600 max-w-3xl mx-auto">{t.pricingPage.subtitle}</p>
+      </div>
+    </section>
+    <Pricing lang={lang} />
+    <FAQ lang={lang} />
+    <CTA lang={lang} />
+  </main>
+  <Footer lang={lang} />
+</Layout>

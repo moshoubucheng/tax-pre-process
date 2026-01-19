@@ -46,7 +46,7 @@ export default function ClientDashboard() {
   const pendingCount = transactions.filter(t => t.status === 'pending').length;
   const confirmedCount = transactions.filter(t => t.status === 'confirmed').length;
   const onHoldCount = transactions.filter(t => t.status === 'on_hold').length;
-  const lowConfidenceCount = transactions.filter(t => t.status === 'pending' && t.confidence < 80).length;
+  const lowConfidenceCount = transactions.filter(t => t.status === 'pending' && (t.confidence ?? 100) < 80).length;
   const totalAmount = transactions.reduce((sum, t) => sum + (t.amount || 0), 0);
 
   // Recent pending transactions
@@ -160,12 +160,12 @@ export default function ClientDashboard() {
                   <p className="font-medium text-gray-900">{txn.vendor || '不明'}</p>
                   <p className="text-sm text-gray-500">
                     {txn.date} · {txn.account_category || '未分類'}
-                    {txn.confidence < 80 && (
+                    {(txn.confidence ?? 100) < 80 && (
                       <span className="ml-2 text-orange-600">信頼度 {txn.confidence}%</span>
                     )}
                   </p>
                 </div>
-                <p className="font-semibold">¥{txn.amount.toLocaleString()}</p>
+                <p className="font-semibold">¥{(txn.amount || 0).toLocaleString()}</p>
               </div>
             ))}
           </div>
