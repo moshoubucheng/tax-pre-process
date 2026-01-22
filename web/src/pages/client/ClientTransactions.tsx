@@ -7,12 +7,12 @@ import ConfirmRevertModal from '../../components/ConfirmRevertModal';
 
 interface Transaction {
   id: string;
-  date: string;
+  transaction_date: string;
   amount: number;
-  vendor: string;
-  account_category: string;
+  vendor_name: string;
+  account_debit: string;
   status: string;
-  confidence: number;
+  ai_confidence: number;
   created_at: string;
 }
 
@@ -420,7 +420,7 @@ export default function ClientTransactions() {
                   )}
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="font-medium">{txn.vendor || '不明'}</span>
+                      <span className="font-medium">{txn.vendor_name || '—'}</span>
                       <span className={`text-xs px-2 py-0.5 rounded-full ${
                         txn.status === 'confirmed'
                           ? 'bg-green-100 text-green-700'
@@ -430,11 +430,11 @@ export default function ClientTransactions() {
                       </span>
                     </div>
                     <div className="text-sm text-gray-500">
-                      <span>{txn.date}</span>
+                      <span>{txn.transaction_date}</span>
                       <span className="mx-2">·</span>
-                      <span>{txn.account_category || '未分類'}</span>
-                      {(txn.confidence ?? 100) < 80 && (
-                        <span className="ml-2 text-orange-600">信頼度 {txn.confidence}%</span>
+                      <span>{txn.account_debit || '—'}</span>
+                      {(txn.ai_confidence ?? 100) < 80 && (
+                        <span className="ml-2 text-orange-600">信頼度 {txn.ai_confidence}%</span>
                       )}
                     </div>
                   </div>

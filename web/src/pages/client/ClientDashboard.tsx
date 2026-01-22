@@ -5,12 +5,12 @@ import { useClientContext } from '../../hooks/useClientContext';
 
 interface Transaction {
   id: string;
-  date: string;
+  transaction_date: string;
   amount: number;
-  vendor: string;
-  account_category: string;
+  vendor_name: string;
+  account_debit: string;
   status: string;
-  confidence: number;
+  ai_confidence: number;
 }
 
 export default function ClientDashboard() {
@@ -46,7 +46,7 @@ export default function ClientDashboard() {
   const pendingCount = transactions.filter(t => t.status === 'pending').length;
   const confirmedCount = transactions.filter(t => t.status === 'confirmed').length;
   const onHoldCount = transactions.filter(t => t.status === 'on_hold').length;
-  const lowConfidenceCount = transactions.filter(t => t.status === 'pending' && (t.confidence ?? 100) < 80).length;
+  const lowConfidenceCount = transactions.filter(t => t.status === 'pending' && (t.ai_confidence ?? 100) < 80).length;
   const totalAmount = transactions.reduce((sum, t) => sum + (t.amount || 0), 0);
 
   // Recent pending transactions
@@ -157,11 +157,11 @@ export default function ClientDashboard() {
             {recentPending.map((txn) => (
               <div key={txn.id} className="p-4 flex items-center justify-between">
                 <div>
-                  <p className="font-medium text-gray-900">{txn.vendor || '不明'}</p>
+                  <p className="font-medium text-gray-900">{txn.vendor_name || '—'}</p>
                   <p className="text-sm text-gray-500">
-                    {txn.date} · {txn.account_category || '未分類'}
-                    {(txn.confidence ?? 100) < 80 && (
-                      <span className="ml-2 text-orange-600">信頼度 {txn.confidence}%</span>
+                    {txn.transaction_date} · {txn.account_debit || '—'}
+                    {(txn.ai_confidence ?? 100) < 80 && (
+                      <span className="ml-2 text-orange-600">信頼度 {txn.ai_confidence}%</span>
                     )}
                   </p>
                 </div>
