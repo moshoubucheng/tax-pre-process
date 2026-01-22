@@ -6,6 +6,7 @@ import {
   getCompanyDocuments,
   createCompanyDocuments,
   updateCompanyDocuments,
+  getCompanyById,
 } from '../db/queries';
 
 const documents = new Hono<{ Bindings: Env }>();
@@ -17,6 +18,32 @@ documents.use('*', authMiddleware);
 const PDF_FIELDS = [
   'tohon', 'teikan', 'zairyu_card', 'juminhyo', 'kaigyo_doc'
 ] as const;
+
+const PDF_FIELD_LABELS: Record<string, string> = {
+  tohon: '謄本',
+  teikan: '定款',
+  zairyu_card: '社長・家族在留カード',
+  juminhyo: '住民票',
+  kaigyo_doc: '開業届出書類',
+};
+
+// Helper to create notification
+async function createNotification(
+  db: D1Database,
+  data: {
+    company_id: string;
+    company_name: string;
+    type: 'submitted' | 'file_uploaded';
+    field_name?: string;
+    message: string;
+  }
+) {
+  const id = generateId('notif');
+  await db.prepare(
+    `INSERT INTO document_notifications (id, company_id, company_name, type, field_name, message)
+     VALUES (?, ?, ?, ?, ?, ?)`
+  ).bind(id, data.company_id, data.company_name, data.type, data.field_name || null, data.message).run();
+}
 
 // GET /api/documents - Get company documents
 documents.get('/', async (c) => {
@@ -171,6 +198,21 @@ documents.post('/upload/:field', async (c) => {
     updateData[`${field}_key`] = key;
     await updateCompanyDocuments(c.env.DB, user.company_id, updateData);
 
+    // Create notification for admin (only for client uploads)
+    if (user.role !== 'admin') {
+      const company = await getCompanyById(c.env.DB, user.company_id);
+      if (company) {
+        const fieldLabel = PDF_FIELD_LABELS[field] || field;
+        await createNotification(c.env.DB, {
+          company_id: user.company_id,
+          company_name: company.name,
+          type: 'file_uploaded',
+          field_name: field,
+          message: `${company.name}が「${fieldLabel}」をアップロードしました`,
+        });
+      }
+    }
+
     return c.json({ key, message: 'アップロードしました' });
   } catch (error) {
     console.error('Upload PDF error:', error);
@@ -252,6 +294,17 @@ documents.put('/submit', async (c) => {
       status: 'submitted',
     });
 
+    // Create notification for admin
+    const company = await getCompanyById(c.env.DB, user.company_id);
+    if (company) {
+      await createNotification(c.env.DB, {
+        company_id: user.company_id,
+        company_name: company.name,
+        type: 'submitted',
+        message: `${company.name}が基礎資料を提出しました`,
+      });
+    }
+
     return c.json({ message: '提出しました' });
   } catch (error) {
     console.error('Submit documents error:', error);
@@ -330,6 +383,79 @@ documents.get('/:companyId', async (c) => {
   } catch (error) {
     console.error('Get company documents error:', error);
     return c.json({ error: '書類情報の取得に失敗しました' }, 500);
+  }
+});
+
+// PUT /api/documents/batch-confirm - Batch confirm documents (Admin only)
+documents.put('/batch-confirm', async (c) => {
+  try {
+    const user = c.get('user');
+
+    if (user.role !== 'admin') {
+      return c.json({ error: '管理者のみが実行できます' }, 403);
+    }
+
+    const { company_ids } = await c.req.json<{ company_ids: string[] }>();
+
+    if (!company_ids || !Array.isArray(company_ids) || company_ids.length === 0) {
+      return c.json({ error: '確認する会社を選択してください' }, 400);
+    }
+
+    const now = new Date().toISOString();
+    let successCount = 0;
+
+    for (const companyId of company_ids) {
+      const docs = await getCompanyDocuments(c.env.DB, companyId);
+      if (docs && docs.status !== 'confirmed') {
+        await updateCompanyDocuments(c.env.DB, companyId, {
+          status: 'confirmed',
+          confirmed_by: user.sub,
+          confirmed_at: now,
+        });
+        successCount++;
+      }
+    }
+
+    return c.json({ message: `${successCount}件の資料を確認しました` });
+  } catch (error) {
+    console.error('Batch confirm error:', error);
+    return c.json({ error: '一括確認に失敗しました' }, 500);
+  }
+});
+
+// PUT /api/documents/batch-unlock - Batch unlock documents (Admin only)
+documents.put('/batch-unlock', async (c) => {
+  try {
+    const user = c.get('user');
+
+    if (user.role !== 'admin') {
+      return c.json({ error: '管理者のみが実行できます' }, 403);
+    }
+
+    const { company_ids } = await c.req.json<{ company_ids: string[] }>();
+
+    if (!company_ids || !Array.isArray(company_ids) || company_ids.length === 0) {
+      return c.json({ error: '解除する会社を選択してください' }, 400);
+    }
+
+    let successCount = 0;
+
+    for (const companyId of company_ids) {
+      const docs = await getCompanyDocuments(c.env.DB, companyId);
+      if (docs && docs.status === 'confirmed') {
+        await updateCompanyDocuments(c.env.DB, companyId, {
+          status: 'submitted',
+          confirmed_by: null,
+          confirmed_at: null,
+        });
+        successCount++;
+      }
+    }
+
+    return c.json({ message: `${successCount}件の資料を解除しました` });
+  } catch (error) {
+    console.error('Batch unlock error:', error);
+    return c.json({ error: '一括解除に失敗しました' }, 500);
   }
 });
 

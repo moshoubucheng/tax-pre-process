@@ -6,6 +6,13 @@ interface Company {
   name: string;
 }
 
+interface CompanyWithDocs {
+  id: string;
+  name: string;
+  doc_status: 'none' | 'draft' | 'submitted' | 'confirmed';
+  has_docs: boolean;
+}
+
 interface CompanyDocuments {
   id: string;
   company_id: string;
@@ -38,8 +45,15 @@ const PDF_FIELDS = [
 ] as const;
 
 export default function AdminDocuments() {
-  const [companies, setCompanies] = useState<Company[]>([]);
+  const [companiesWithDocs, setCompaniesWithDocs] = useState<CompanyWithDocs[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Status filter
+  const [statusFilter, setStatusFilter] = useState<'all' | 'submitted' | 'confirmed'>('all');
+
+  // Batch selection
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [batchProcessing, setBatchProcessing] = useState(false);
 
   // Selected company
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
@@ -73,12 +87,76 @@ export default function AdminDocuments() {
 
   async function loadCompanies() {
     try {
-      const res = await api.get<{ data: Company[] }>('/admin/companies');
-      setCompanies(res.data || []);
+      const res = await api.get<{ data: CompanyWithDocs[] }>('/admin/companies-with-docs');
+      setCompaniesWithDocs(res.data || []);
     } catch (err) {
       console.error('Failed to load companies:', err);
     } finally {
       setLoading(false);
+    }
+  }
+
+  // Filter companies by status
+  const filteredCompanies = companiesWithDocs.filter((company) => {
+    if (statusFilter === 'all') return true;
+    return company.doc_status === statusFilter;
+  });
+
+  // Toggle selection
+  function toggleSelection(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }
+
+  // Select all visible
+  function toggleSelectAll() {
+    if (selectedIds.size === filteredCompanies.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredCompanies.map((c) => c.id)));
+    }
+  }
+
+  // Batch confirm
+  async function handleBatchConfirm() {
+    if (selectedIds.size === 0) return;
+    if (!confirm(`${selectedIds.size}件の資料を一括確認しますか？`)) return;
+
+    setBatchProcessing(true);
+    try {
+      await api.put('/documents/batch-confirm', { company_ids: Array.from(selectedIds) });
+      await loadCompanies();
+      setSelectedIds(new Set());
+      alert('一括確認が完了しました');
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '一括確認に失敗しました');
+    } finally {
+      setBatchProcessing(false);
+    }
+  }
+
+  // Batch unlock
+  async function handleBatchUnlock() {
+    if (selectedIds.size === 0) return;
+    if (!confirm(`${selectedIds.size}件の資料を一括解除しますか？`)) return;
+
+    setBatchProcessing(true);
+    try {
+      await api.put('/documents/batch-unlock', { company_ids: Array.from(selectedIds) });
+      await loadCompanies();
+      setSelectedIds(new Set());
+      alert('一括解除が完了しました');
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '一括解除に失敗しました');
+    } finally {
+      setBatchProcessing(false);
     }
   }
 
@@ -480,29 +558,132 @@ export default function AdminDocuments() {
     );
   }
 
+  // Get status badge
+  function getStatusBadge(status: string) {
+    switch (status) {
+      case 'draft':
+        return <span className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded">下書き</span>;
+      case 'submitted':
+        return <span className="text-xs px-2 py-1 bg-orange-100 text-orange-700 rounded">確認待ち</span>;
+      case 'confirmed':
+        return <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded">確認済</span>;
+      default:
+        return <span className="text-xs px-2 py-1 bg-gray-100 text-gray-400 rounded">未登録</span>;
+    }
+  }
+
   // Company list view
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-bold text-gray-900">基礎資料管理</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-bold text-gray-900">基礎資料管理</h1>
+      </div>
+
+      {/* Status Filter */}
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-sm text-gray-600">ステータス:</span>
+        <button
+          onClick={() => { setStatusFilter('all'); setSelectedIds(new Set()); }}
+          className={`px-3 py-1 text-sm rounded-full ${
+            statusFilter === 'all'
+              ? 'bg-primary-600 text-white'
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+          }`}
+        >
+          全て ({companiesWithDocs.length})
+        </button>
+        <button
+          onClick={() => { setStatusFilter('submitted'); setSelectedIds(new Set()); }}
+          className={`px-3 py-1 text-sm rounded-full ${
+            statusFilter === 'submitted'
+              ? 'bg-orange-600 text-white'
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+          }`}
+        >
+          確認待ち ({companiesWithDocs.filter((c) => c.doc_status === 'submitted').length})
+        </button>
+        <button
+          onClick={() => { setStatusFilter('confirmed'); setSelectedIds(new Set()); }}
+          className={`px-3 py-1 text-sm rounded-full ${
+            statusFilter === 'confirmed'
+              ? 'bg-green-600 text-white'
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+          }`}
+        >
+          確認済 ({companiesWithDocs.filter((c) => c.doc_status === 'confirmed').length})
+        </button>
+      </div>
+
+      {/* Batch Actions */}
+      {selectedIds.size > 0 && (
+        <div className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <span className="text-sm text-blue-800">{selectedIds.size}件選択中</span>
+          <div className="flex gap-2 ml-auto">
+            <button
+              onClick={handleBatchConfirm}
+              disabled={batchProcessing}
+              className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
+            >
+              {batchProcessing ? '処理中...' : '一括確認'}
+            </button>
+            <button
+              onClick={handleBatchUnlock}
+              disabled={batchProcessing}
+              className="px-3 py-1 text-sm bg-orange-600 text-white rounded hover:bg-orange-700 disabled:opacity-50"
+            >
+              {batchProcessing ? '処理中...' : '一括解除'}
+            </button>
+            <button
+              onClick={() => setSelectedIds(new Set())}
+              className="px-3 py-1 text-sm bg-gray-500 text-white rounded hover:bg-gray-600"
+            >
+              選択解除
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-        {companies.length === 0 ? (
+        {filteredCompanies.length === 0 ? (
           <div className="text-center py-12 text-gray-500">
-            顧問先がまだ登録されていません
+            {companiesWithDocs.length === 0 ? '顧問先がまだ登録されていません' : '該当する資料がありません'}
           </div>
         ) : (
           <div className="divide-y divide-gray-200">
-            {companies.map((company) => (
-              <button
+            {/* Select All Header */}
+            <div className="px-4 py-3 bg-gray-50 flex items-center gap-3">
+              <input
+                type="checkbox"
+                checked={selectedIds.size === filteredCompanies.length && filteredCompanies.length > 0}
+                onChange={toggleSelectAll}
+                className="h-4 w-4 text-primary-600 rounded border-gray-300"
+              />
+              <span className="text-sm text-gray-600">全選択</span>
+            </div>
+            {filteredCompanies.map((company) => (
+              <div
                 key={company.id}
-                onClick={() => selectCompany(company)}
-                className="w-full px-4 py-4 flex items-center justify-between hover:bg-gray-50 text-left"
+                className="px-4 py-4 flex items-center gap-3 hover:bg-gray-50"
               >
-                <span className="font-medium text-gray-900">{company.name}</span>
-                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </button>
+                <input
+                  type="checkbox"
+                  checked={selectedIds.has(company.id)}
+                  onChange={() => toggleSelection(company.id)}
+                  className="h-4 w-4 text-primary-600 rounded border-gray-300"
+                />
+                <button
+                  onClick={() => selectCompany({ id: company.id, name: company.name })}
+                  className="flex-1 flex items-center justify-between text-left"
+                >
+                  <span className="font-medium text-gray-900">{company.name}</span>
+                  <div className="flex items-center gap-2">
+                    {getStatusBadge(company.doc_status)}
+                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </div>
+                </button>
+              </div>
             ))}
           </div>
         )}

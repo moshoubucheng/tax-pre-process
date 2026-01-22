@@ -473,4 +473,100 @@ admin.put('/users/:id/password', async (c) => {
   }
 });
 
+// ============== Notification APIs ==============
+
+// GET /api/admin/notifications - Get notifications
+admin.get('/notifications', async (c) => {
+  try {
+    const { unread_only, limit } = c.req.query();
+
+    let query = 'SELECT * FROM document_notifications';
+    const params: (string | number)[] = [];
+
+    if (unread_only === 'true') {
+      query += ' WHERE is_read = 0';
+    }
+
+    query += ' ORDER BY created_at DESC';
+
+    if (limit) {
+      query += ' LIMIT ?';
+      params.push(parseInt(limit));
+    } else {
+      query += ' LIMIT 50';
+    }
+
+    const result = await c.env.DB.prepare(query)
+      .bind(...params)
+      .all();
+
+    // Get unread count
+    const unreadResult = await c.env.DB.prepare(
+      'SELECT COUNT(*) as count FROM document_notifications WHERE is_read = 0'
+    ).first<{ count: number }>();
+
+    return c.json({
+      data: result.results,
+      unread_count: unreadResult?.count || 0,
+    });
+  } catch (error) {
+    console.error('Get notifications error:', error);
+    return c.json({ error: '通知の取得に失敗しました' }, 500);
+  }
+});
+
+// PUT /api/admin/notifications/read-all - Mark all as read
+admin.put('/notifications/read-all', async (c) => {
+  try {
+    await c.env.DB.prepare(
+      'UPDATE document_notifications SET is_read = 1 WHERE is_read = 0'
+    ).run();
+
+    return c.json({ message: '全ての通知を既読にしました' });
+  } catch (error) {
+    console.error('Mark all read error:', error);
+    return c.json({ error: '既読処理に失敗しました' }, 500);
+  }
+});
+
+// PUT /api/admin/notifications/:id/read - Mark single notification as read
+admin.put('/notifications/:id/read', async (c) => {
+  try {
+    const id = c.req.param('id');
+
+    await c.env.DB.prepare(
+      'UPDATE document_notifications SET is_read = 1 WHERE id = ?'
+    ).bind(id).run();
+
+    return c.json({ message: '通知を既読にしました' });
+  } catch (error) {
+    console.error('Mark read error:', error);
+    return c.json({ error: '既読処理に失敗しました' }, 500);
+  }
+});
+
+// GET /api/admin/companies-with-docs - Get companies with document status
+admin.get('/companies-with-docs', async (c) => {
+  try {
+    const companies = await getCompaniesWithStats(c.env.DB);
+
+    const result = await Promise.all(
+      companies.map(async (company) => {
+        const docs = await getCompanyDocuments(c.env.DB, company.id);
+        return {
+          id: company.id,
+          name: company.name,
+          doc_status: docs?.status || 'none',
+          has_docs: !!docs,
+        };
+      })
+    );
+
+    return c.json({ data: result });
+  } catch (error) {
+    console.error('Get companies with docs error:', error);
+    return c.json({ error: '顧問先一覧の取得に失敗しました' }, 500);
+  }
+});
+
 export default admin;

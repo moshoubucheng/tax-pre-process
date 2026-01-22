@@ -102,10 +102,22 @@ export default function Documents() {
   async function handleUpload(field: string, file: File) {
     setUploading(field);
     try {
+      // Frontend pre-validation
+      if (file.type !== 'application/pdf') {
+        throw new Error('PDFファイルのみアップロードできます');
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        throw new Error('ファイルサイズは10MB以下にしてください');
+      }
+
       const formData = new FormData();
       formData.append('file', file);
 
       const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('ログインが必要です');
+      }
+
       const baseUrl = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? 'https://tax-api.759nxrb6x4-bc3.workers.dev/api' : '/api');
 
       const res = await fetch(`${baseUrl}/documents/upload/${field}`, {
@@ -117,12 +129,13 @@ export default function Documents() {
       });
 
       if (!res.ok) {
-        const error = await res.json();
+        const error = await res.json().catch(() => ({ error: 'アップロードに失敗しました' }));
         throw new Error(error.error || 'アップロードに失敗しました');
       }
 
       await loadDocuments();
     } catch (err) {
+      console.error('Upload error:', err);
       alert(err instanceof Error ? err.message : 'アップロードに失敗しました');
     } finally {
       setUploading(null);
