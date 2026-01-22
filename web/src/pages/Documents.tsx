@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { api } from '../lib/api';
+import { api, API_BASE_URL } from '../lib/api';
 
 interface CompanyDocuments {
   id: string;
@@ -110,29 +110,7 @@ export default function Documents() {
         throw new Error('ファイルサイズは10MB以下にしてください');
       }
 
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error('ログインが必要です');
-      }
-
-      const baseUrl = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? 'https://tax-api.759nxrb6x4-bc3.workers.dev/api' : '/api');
-
-      const res = await fetch(`${baseUrl}/documents/upload/${field}`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-        body: formData,
-      });
-
-      if (!res.ok) {
-        const error = await res.json().catch(() => ({ error: 'アップロードに失敗しました' }));
-        throw new Error(error.error || 'アップロードに失敗しました');
-      }
-
+      await api.upload(`/documents/upload/${field}`, file);
       await loadDocuments();
     } catch (err) {
       console.error('Upload error:', err);
@@ -162,8 +140,7 @@ export default function Documents() {
 
   function getFileUrl(field: string): string {
     const token = localStorage.getItem('token');
-    const baseUrl = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? 'https://tax-api.759nxrb6x4-bc3.workers.dev/api' : '/api');
-    return `${baseUrl}/documents/file/${field}?token=${token}`;
+    return `${API_BASE_URL}/documents/file/${field}?token=${token}`;
   }
 
   const isLocked = docs?.status === 'confirmed';
@@ -239,7 +216,11 @@ export default function Documents() {
                     disabled={isLocked}
                     onChange={(e) => {
                       const file = e.target.files?.[0];
-                      if (file) handleUpload(field.key, file);
+                      if (file) {
+                        handleUpload(field.key, file);
+                        // Reset input so same file can be re-uploaded
+                        e.target.value = '';
+                      }
                     }}
                   />
                   <button
