@@ -18,12 +18,20 @@ export async function authMiddleware(
   next: Next
 ) {
   const authHeader = c.req.header('Authorization');
+  const queryToken = c.req.query('token');
 
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  // Support token from query param (for file downloads in new tab) or Authorization header
+  let token: string | null = null;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.slice(7);
+  } else if (queryToken) {
+    token = queryToken;
+  }
+
+  if (!token) {
     return c.json({ error: '認証が必要です' }, 401);
   }
 
-  const token = authHeader.slice(7);
   const payload = await verifyJWT(token, c.env.JWT_SECRET);
 
   if (!payload) {
